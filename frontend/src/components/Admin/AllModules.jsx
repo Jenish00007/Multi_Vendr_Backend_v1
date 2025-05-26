@@ -116,10 +116,12 @@ const AllModules = () => {
       renderCell: (params) => (
         <div className="w-[50px] h-[50px] rounded-lg overflow-hidden">
           <img
-            src={params.value}
+            src={`${server}/${params.value}`}
             alt={params.row.name}
             className="w-full h-full object-cover"
-           
+            onError={(e) => {
+              e.target.src = "https://via.placeholder.com/50";
+            }}
           />
         </div>
       ),

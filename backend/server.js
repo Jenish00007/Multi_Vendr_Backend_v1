@@ -72,6 +72,10 @@ const withdraw = require("./controller/withdraw");
 const moduleRoutes = require("./routes/moduleRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const subcategoryRoutes = require("./routes/subcategoryRoutes");
+const userProductRoutes = require("./routes/userProduct");
+const searchRoutes = require("./routes/search");
+const shopRoutes = require("./routes/shopRoutes");
+const shopBannerRoutes = require("./routes/shopBannerRoutes");
 
 // end points
 app.use("/api/v2/withdraw", withdraw);
@@ -89,6 +93,10 @@ app.use("/api/v2/payment", payment);
 app.use("/api/v2/modules", moduleRoutes);
 app.use("/api/v2/categories", categoryRoutes);
 app.use("/api/v2/subcategories", subcategoryRoutes);
+app.use("/api/v2/user-products", userProductRoutes);
+app.use("/api/v2/search", searchRoutes);
+app.use("/api/v2/shops", shopRoutes);
+app.use("/api/v2/shop-banners", shopBannerRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);

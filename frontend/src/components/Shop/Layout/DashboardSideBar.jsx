@@ -8,7 +8,7 @@ import { CiMoneyBill, CiSettings } from "react-icons/ci";
 import { Link } from "react-router-dom";
 import { BiMessageSquareDetail } from "react-icons/bi";
 import { HiOutlineReceiptRefund } from "react-icons/hi";
-import { BsGraphUp } from "react-icons/bs";
+import { BsGraphUp, BsImages } from "react-icons/bs";
 
 const DashboardSideBar = ({ active, openSidebar }) => {
     return (
@@ -166,6 +166,21 @@ const DashboardSideBar = ({ active, openSidebar }) => {
                             }`}
                         >
                             Settings
+                        </h5>
+                    </Link>
+                </div>
+
+                <div className="w-full flex items-center p-4 hover:bg-blue-50 rounded-lg transition-all duration-300 group">
+                    <Link to="/dashboard-banners" className="w-full flex items-center">
+                        <div className={`p-2 rounded-lg ${active === 11 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
+                            <BsImages size={22} />
+                        </div>
+                        <h5
+                            className={`pl-4 text-[16px] font-medium ${
+                                active === 11 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
+                            }`}
+                        >
+                            Banners
                         </h5>
                     </Link>
                 </div>

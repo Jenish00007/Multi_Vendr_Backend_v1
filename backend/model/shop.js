@@ -24,6 +24,17 @@ const shopSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      required: true
+    }
+  },
   phoneNumber: {
     type: Number,
     required: true,
@@ -73,6 +84,9 @@ const shopSchema = new mongoose.Schema({
   resetPasswordToken: String,
   resetPasswordTime: Date,
 });
+
+// Create index for geospatial queries
+shopSchema.index({ location: "2dsphere" });
 
 // Hash password
 shopSchema.pre("save", async function (next) {
