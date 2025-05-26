@@ -14,7 +14,7 @@ const Hero = () => {
         >
             <div className={`${styles.section} w-[90%] 800px:w-[60%]`}>
                 <h1
-                    className={`text-[35px] leading-[1.2] 800px:text-[60px] text-[#3d3a3a] font-[600] capitalize`}
+                    className={`text-[35px] leading-[1.2] 800px:text-[60px] font-[600] capitalize bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent`}
                 >
                     Best Collection for <br /> home Decoration
                 </h1>

@@ -43,23 +43,10 @@ router.post("/create-shop", upload.single("file"), async (req, res, next) => {
       zipCode: req.body.zipCode,
     };
 
-    const activationToken = createActivationToken(seller);
+    // Create shop directly without activation
+    const newSeller = await Shop.create(seller);
+    sendShopToken(newSeller, 201, res);
 
-    const activationUrl = `http://localhost:3000/seller/activation/${activationToken}`;
-
-    try {
-      await sendMail({
-        email: seller.email,
-        subject: "Activate your Shop",
-        message: `Hello ${seller.name}, please click on the link to activate your shop: ${activationUrl}`,
-      });
-      res.status(201).json({
-        success: true,
-        message: `please check your email:- ${seller.email} to activate your shop!`,
-      });
-    } catch (error) {
-      return next(new ErrorHandler(error.message, 500));
-    }
   } catch (error) {
     return next(new ErrorHandler(error.message, 400));
   }
@@ -118,19 +105,32 @@ router.post(
   "/login-shop",
   catchAsyncErrors(async (req, res, next) => {
     try {
+      console.log("Login request body:", req.body);
       const { email, password } = req.body;
+      
+      console.log("Login attempt with:", { 
+        email: email || 'undefined', 
+        password: password ? 'provided' : 'missing',
+        bodyKeys: Object.keys(req.body)
+      });
 
-      if (!email || !password) {
-        return next(new ErrorHandler("Please provide the all fields!", 400));
+      if (!email) {
+        return next(new ErrorHandler("Email is required!", 400));
+      }
+
+      if (!password) {
+        return next(new ErrorHandler("Password is required!", 400));
       }
 
       const user = await Shop.findOne({ email }).select("+password");
+      console.log("Found user:", user ? "Yes" : "No");
 
       if (!user) {
         return next(new ErrorHandler("User doesn't exists!", 400));
       }
 
       const isPasswordValid = await user.comparePassword(password);
+      console.log("Password valid:", isPasswordValid);
 
       if (!isPasswordValid) {
         return next(
@@ -140,6 +140,7 @@ router.post(
 
       sendShopToken(user, 201, res);
     } catch (error) {
+      console.error("Login error:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })

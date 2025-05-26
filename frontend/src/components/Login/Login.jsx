@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { FaShoppingBag } from "react-icons/fa";
 import styles from "../../styles/styles";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { server } from "../../server";
 import { toast } from "react-toastify";
-
 
 const Login = () => {
     const navigate = useNavigate()
@@ -25,7 +25,7 @@ const Login = () => {
                 },
                 { withCredentials: true }
             ).then((res) => {
-                toast.success("Login Sucess!")
+                toast.success("Login Success!")
                 navigate("/")
                 window.location.reload(true);
             })
@@ -35,15 +35,21 @@ const Login = () => {
     };
 
     return (
-        <div className='min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8'>
+        <div className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8'>
             <div className='sm:mx-auto sm:w-full sm:max-w-md'>
+                <div className="flex justify-center">
+                    <FaShoppingBag className="text-5xl text-blue-600" />
+                </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Login to your account
+                    Welcome Back
                 </h2>
+                <p className="mt-2 text-center text-sm text-gray-600">
+                    Please sign in to your account
+                </p>
             </div>
-            <div className='mt-8 sm:mx-auto sw:w-full sm:max-w-md'>
-                <div className='bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10'>
-                    <form className='space-y-6' onSubmit={handleSubmit} >
+            <div className='mt-8 sm:mx-auto sm:w-full sm:max-w-md'>
+                <div className='bg-white py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 transform transition-all hover:scale-[1.01]'>
+                    <form className='space-y-6' onSubmit={handleSubmit}>
                         {/* Email */}
                         <div>
                             <label htmlFor="email"
@@ -56,47 +62,46 @@ const Login = () => {
                                     name='email'
                                     autoComplete='email'
                                     required
-                                    placeholder='Please enter valid email'
+                                    placeholder='Enter your email'
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className='appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+                                    className='appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
                                 />
-
                             </div>
                         </div>
+                        
                         {/* Password */}
                         <div>
                             <label htmlFor="password"
                                 className='block text-sm font-medium text-gray-700'
                             >
-                                password
+                                Password
                             </label>
                             <div className='mt-1 relative'>
                                 <input type={visible ? "text" : "password"}
                                     name='password'
-                                    autoComplete='password'
+                                    autoComplete='current-password'
                                     required
+                                    placeholder='Enter your password'
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className='appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+                                    className='appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
                                 />
                                 {visible ? (
                                     <AiOutlineEye
-                                        className="absolute right-2 top-2 cursor-pointer"
-                                        size={25}
+                                        className="absolute right-3 top-3.5 cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                                        size={20}
                                         onClick={() => setVisible(false)}
                                     />
                                 ) : (
                                     <AiOutlineEyeInvisible
-                                        className="absolute right-2 top-2 cursor-pointer"
-                                        size={25}
+                                        className="absolute right-3 top-3.5 cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                                        size={20}
                                         onClick={() => setVisible(true)}
                                     />
                                 )}
-
                             </div>
                         </div>
-                        {/* password end */}
 
                         <div className={`${styles.noramlFlex} justify-between`}>
                             <div className={`${styles.noramlFlex}`}>
@@ -116,25 +121,26 @@ const Login = () => {
                             <div className='text-sm'>
                                 <a
                                     href=".forgot-password"
-                                    className="font-medium text-blue-600 hover:text-blue-500"
+                                    className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
                                 >
-                                    Forgot your password?
+                                    Forgot password?
                                 </a>
                             </div>
                         </div>
+
                         <div>
                             <button
                                 type='submit'
-                                className=' className="group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"'
+                                className='group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-[1.02]'
                             >
-                                Submit
+                                Sign in
                             </button>
                         </div>
 
-                        <div className={`${styles.noramlFlex} w-full`} >
-                            <h4>Not have any account</h4>
-                            <Link to="/sign-up" className="text-blue-600 pl-2">
-                                Sign Up
+                        <div className={`${styles.noramlFlex} w-full`}>
+                            <h4 className="text-gray-600">Don't have an account?</h4>
+                            <Link to="/sign-up" className="text-blue-600 pl-2 font-medium hover:text-blue-500 transition-colors">
+                                Sign up
                             </Link>
                         </div>
                     </form>

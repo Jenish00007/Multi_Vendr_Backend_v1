@@ -209,7 +209,7 @@ const DashboardMessages = () => {
     <div className="w-[90%] bg-white m-5 h-[85vh] overflow-y-scroll rounded">
       {!open && (
         <>
-          <h1 className="text-center text-[30px] py-3 font-Poppins">
+          <h1 className="text-center text-[30px] py-3 font-Poppins bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
             All Messages
           </h1>
           {/* All messages list */}

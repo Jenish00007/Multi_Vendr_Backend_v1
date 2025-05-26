@@ -5,13 +5,19 @@ import { Link } from "react-router-dom";
 import { CiMoneyBill } from "react-icons/ci";
 import { GrWorkshop } from "react-icons/gr";
 import { backend_url } from "../../server";
+import { RxHamburgerMenu } from "react-icons/rx";
 
-const AdminHeader = () => {
+const AdminHeader = ({ setOpenSidebar, openSidebar }) => {
   const { user } = useSelector((state) => state.user);
 
   return (
     <div className="w-full h-[80px] bg-white shadow sticky top-0 left-0 z-30 flex items-center justify-between px-4">
-      <div>
+      <div className="flex items-center">
+        <RxHamburgerMenu 
+          size={30} 
+          className="mr-4 cursor-pointer md:hidden"
+          onClick={() => setOpenSidebar(!openSidebar)}
+        />
         <Link to="/">
           <img
             src="https://shopo.quomodothemes.website/assets/images/logo.svg"

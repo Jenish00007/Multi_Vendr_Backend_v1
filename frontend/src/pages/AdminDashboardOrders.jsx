@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import AdminHeader from "../components/Layout/AdminHeader";
 import AdminSideBar from "../components/Admin/Layout/AdminSideBar";
 import { DataGrid } from "@material-ui/data-grid";
@@ -7,6 +7,7 @@ import { getAllOrdersOfAdmin } from "../redux/actions/order";
 
 const AdminDashboardOrders = () => {
   const dispatch = useDispatch();
+  const [openSidebar, setOpenSidebar] = useState(false);
 
   const { adminOrders, adminOrderLoading } = useSelector(
     (state) => state.order
@@ -14,11 +15,10 @@ const AdminDashboardOrders = () => {
 
   useEffect(() => {
     dispatch(getAllOrdersOfAdmin());
-  }, []);
+  }, [dispatch]);
 
   const columns = [
     { field: "id", headerName: "Order ID", minWidth: 150, flex: 0.7 },
-
     {
       field: "status",
       headerName: "Status",
@@ -37,7 +37,6 @@ const AdminDashboardOrders = () => {
       minWidth: 130,
       flex: 0.7,
     },
-
     {
       field: "total",
       headerName: "Total",
@@ -60,20 +59,20 @@ const AdminDashboardOrders = () => {
       row.push({
         id: item._id,
         itemsQty: item?.cart?.reduce((acc, item) => acc + item.qty, 0),
-        total: item?.totalPrice + " $",
+        total: "₹" + item?.totalPrice,
         status: item?.status,
         createdAt: item?.createdAt.slice(0, 10),
       });
     });
+
   return (
     <div>
-      <AdminHeader />
+      <AdminHeader setOpenSidebar={setOpenSidebar} openSidebar={openSidebar} />
       <div className="w-full flex">
-        <div className="flex items-start justify-between w-full">
-          <div className="w-[80px] 800px:w-[330px]">
-            <AdminSideBar active={2} />
+        <div className="flex items-start w-full">
+          <div className={`${openSidebar ? 'w-[250px]' : 'w-[80px]'} 800px:w-[330px]`}>
+            <AdminSideBar active={2} openSidebar={openSidebar} />
           </div>
-
           <div className="w-full min-h-[45vh] pt-5 rounded flex justify-center">
             <div className="w-[97%] flex justify-center">
               <DataGrid
