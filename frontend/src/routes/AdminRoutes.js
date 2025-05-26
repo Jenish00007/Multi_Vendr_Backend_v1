@@ -8,6 +8,7 @@ import AdminDashboardWithdraw from "../pages/AdminDashboardWithdraw";
 import AdminDashboardModules from "../pages/AdminDashboardModules";
 import AdminDashboardCategories from "../pages/AdminDashboardCategories";
 import AdminDashboardSubcategories from "../pages/AdminDashboardSubcategories";
+import AdminBannersPage from "../components/Admin/AdminBannersPage";
 
 export {
   AdminDashboardPage,
@@ -20,4 +21,5 @@ export {
   AdminDashboardModules,
   AdminDashboardCategories,
   AdminDashboardSubcategories,
+  AdminBannersPage,
 };
