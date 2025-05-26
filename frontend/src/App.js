@@ -37,6 +37,9 @@ import {
   ShopSettingsPage,
   ShopWithDrawMoneyPage,
   ShopInboxPage,
+  ShopBannersPage,
+  ShopCreateBanner,
+  ShopEditBanner,
 } from "./routes/ShopRoutes";
 
 import {
@@ -278,6 +281,33 @@ const App = () => {
           element={
             <SellerProtectedRoute>
               <ShopAllCoupouns />
+            </SellerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard-banners"
+          element={
+            <SellerProtectedRoute>
+              <ShopBannersPage />
+            </SellerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard-create-banner"
+          element={
+            <SellerProtectedRoute>
+              <ShopCreateBanner />
+            </SellerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard-edit-banner/:id"
+          element={
+            <SellerProtectedRoute>
+              <ShopEditBanner />
             </SellerProtectedRoute>
           }
         />

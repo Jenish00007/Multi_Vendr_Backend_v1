@@ -1,4 +1,6 @@
-require('dotenv').config();
+require('dotenv').config({
+  path: "config/.env",
+});
 const mongoose = require('mongoose');
 const User = require('./model/user');
 const Shop = require('./model/shop');
@@ -63,7 +65,7 @@ const seedData = async () => {
         phoneNumber: "1234567890",
         email: "fashion@store.com",
         zipCode: "12345",
-        avatar: "https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
         owner: users[1]._id,
         password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2" // Jenish@2000 hashed
       },
@@ -74,7 +76,7 @@ const seedData = async () => {
         phoneNumber: "0987654321",
         email: "tech@gadgets.com",
         zipCode: "54321",
-        avatar: "https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
         owner: users[1]._id,
         password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2" // Jenish@2000 hashed
       }
@@ -90,7 +92,7 @@ const seedData = async () => {
         originalPrice: 99.99,
         discountPrice: 79.99,
         stock: 100,
-        images: ["https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6"],
+        images: ["https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"],
         shopId: shops[0]._id,
         shop: shops[0]._id
       },
@@ -102,7 +104,7 @@ const seedData = async () => {
         originalPrice: 299.99,
         discountPrice: 249.99,
         stock: 50,
-        images: ["https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6"],
+        images: ["https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"],
         shopId: shops[1]._id,
         shop: shops[1]._id
       }
@@ -121,7 +123,7 @@ const seedData = async () => {
         originalPrice: 199.99,
         discountPrice: 149.99,
         stock: 200,
-        images: ["https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6"],
+        images: ["https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"],
         shopId: shops[0]._id,
         shop: shops[0]._id
       }
