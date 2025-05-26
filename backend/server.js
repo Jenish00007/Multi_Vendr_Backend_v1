@@ -67,9 +67,14 @@ const order = require("./controller/order");
 const message = require("./controller/message");
 const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
-app.use("/api/v2/withdraw", withdraw);
+
+// New routes
+const moduleRoutes = require("./routes/moduleRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const subcategoryRoutes = require("./routes/subcategoryRoutes");
 
 // end points
+app.use("/api/v2/withdraw", withdraw);
 app.use("/api/v2/user", user);
 app.use("/api/v2/conversation", conversation);
 app.use("/api/v2/message", message);
@@ -79,6 +84,11 @@ app.use("/api/v2/product", product);
 app.use("/api/v2/event", event);
 app.use("/api/v2/coupon", coupon);
 app.use("/api/v2/payment", payment);
+
+// New endpoints
+app.use("/api/v2/modules", moduleRoutes);
+app.use("/api/v2/categories", categoryRoutes);
+app.use("/api/v2/subcategories", subcategoryRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);
