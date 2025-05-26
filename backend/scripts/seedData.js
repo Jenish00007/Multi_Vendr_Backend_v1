@@ -2,15 +2,15 @@ require('dotenv').config({
   path: "config/.env",
 });
 const mongoose = require('mongoose');
-const User = require('./model/user');
-const Shop = require('./model/shop');
-const Product = require('./model/product');
-const Event = require('./model/event');
-const CouponCode = require('./model/coupounCode');
-const Order = require('./model/order');
-const Conversation = require('./model/conversation');
-const Message = require('./model/messages');
-const Withdraw = require('./model/withdraw');
+const User = require('../model/user');
+const Shop = require('../model/shop');
+const Product = require('../model/product');
+const Event = require('../model/event');
+const CouponCode = require('../model/coupounCode');
+const Order = require('../model/order');
+const Conversation = require('../model/conversation');
+const Message = require('../model/messages');
+const Withdraw = require('../model/withdraw');
 
 const MONGODB_URI = "mongodb+srv://jebilinjebilin96:Jebilin%402000@cluster0.tdceulr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
@@ -67,7 +67,12 @@ const seedData = async () => {
         zipCode: "12345",
         avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
         owner: users[1]._id,
-        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2" // Jenish@2000 hashed
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: true,
+        location: {
+          type: "Point",
+          coordinates: [-73.935242, 40.730610] // New York coordinates
+        }
       },
       {
         name: "Tech Gadgets",
@@ -78,7 +83,44 @@ const seedData = async () => {
         zipCode: "54321",
         avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
         owner: users[1]._id,
-        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2" // Jenish@2000 hashed
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: true,
+        location: {
+          type: "Point",
+          coordinates: [-122.419416, 37.774929] // San Francisco coordinates
+        }
+      },
+      {
+        name: "Home Decor",
+        description: "Beautiful home decoration items",
+        address: "789 Home Street",
+        phoneNumber: "5555555555",
+        email: "home@decor.com",
+        zipCode: "67890",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
+        owner: users[1]._id,
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: true,
+        location: {
+          type: "Point",
+          coordinates: [-87.629798, 41.878113] // Chicago coordinates
+        }
+      },
+      {
+        name: "Sports Equipment",
+        description: "Quality sports and fitness equipment",
+        address: "321 Sports Lane",
+        phoneNumber: "4444444444",
+        email: "sports@equipment.com",
+        zipCode: "13579",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
+        owner: users[1]._id,
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: false,
+        location: {
+          type: "Point",
+          coordinates: [-118.243685, 34.052234] // Los Angeles coordinates
+        }
       }
     ]);
 

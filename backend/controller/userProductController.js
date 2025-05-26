@@ -2,7 +2,6 @@ const Product = require("../model/product");
 const Event = require("../model/event");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const ErrorHandler = require("../utils/ErrorHandler");
-const mongoose = require("mongoose");
 
 // Get recommended products
 exports.getRecommendedProducts = catchAsyncErrors(async (req, res, next) => {
@@ -68,52 +67,43 @@ exports.getMostPopularItems = catchAsyncErrors(async (req, res, next) => {
 
 // Get latest items
 exports.getLatestItems = catchAsyncErrors(async (req, res, next) => {
-  try {
-    const { store_id, category_id, offset = 0, limit = 10, type = 'all' } = req.query;
-    
-    // Build query
-    const query = {};
-    
-    if (store_id && store_id !== '0') {
-      // Validate if store_id is a valid MongoDB ObjectId
-      if (!mongoose.Types.ObjectId.isValid(store_id)) {
-        return next(new ErrorHandler("Invalid store ID format", 400));
-      }
-      query.shopId = store_id;
-    }
-    
-    if (category_id && category_id !== '0') {
-      query.category = category_id;
-    }
-    
-    if (type !== 'all') {
-      query.type = type;
-    }
-
-    // Calculate skip value for pagination
-    const skip = parseInt(offset);
-    const limitValue = parseInt(limit);
-
-    // Execute query with sorting and pagination
-    const products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitValue)
-      .populate('shopId', 'name avatar ratings'); // Populate shop details
-
-    // Get total count for pagination
-    const total = await Product.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      products,
-      total,
-      currentPage: Math.floor(skip / limitValue) + 1,
-      totalPages: Math.ceil(total / limitValue)
-    });
-  } catch (error) {
-    return next(new ErrorHandler(error.message, 500));
+  const { store_id, category_id, offset = 0, limit = 10, type = 'all' } = req.query;
+  
+  // Build query
+  const query = {};
+  
+  if (store_id && store_id !== '0') {
+    query.shopId = store_id;
   }
+  
+  if (category_id && category_id !== '0') {
+    query.category = category_id;
+  }
+  
+  if (type !== 'all') {
+    query.type = type;
+  }
+
+  // Calculate skip value for pagination
+  const skip = parseInt(offset);
+  const limitValue = parseInt(limit);
+
+  // Execute query with sorting and pagination
+  const products = await Product.find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limitValue);
+
+  // Get total count for pagination
+  const total = await Product.countDocuments(query);
+
+  res.status(200).json({
+    success: true,
+    products,
+    total,
+    currentPage: Math.floor(skip / limitValue) + 1,
+    totalPages: Math.ceil(total / limitValue)
+  });
 });
 
 // Get flash sale items (from events collection)
