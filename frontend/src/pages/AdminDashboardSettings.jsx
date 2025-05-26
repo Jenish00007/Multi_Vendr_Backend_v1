@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import AdminHeader from "../components/Layout/AdminHeader";
 import AdminSideBar from "../components/Admin/Layout/AdminSideBar";
-import AllSellers from "../components/Admin/AllSellers";
+import AdminSettings from "../components/Admin/AdminSettings";
 
-const AdminDashboardSellers = () => {
+const AdminDashboardSettings = () => {
   const [openSidebar, setOpenSidebar] = useState(false);
 
   return (
@@ -12,10 +12,10 @@ const AdminDashboardSellers = () => {
       <div className="w-full flex">
         <div className="flex items-start w-full">
           <div className={`${openSidebar ? 'w-[250px]' : 'w-[80px]'} 800px:w-[330px]`}>
-            <AdminSideBar active={3} openSidebar={openSidebar} />
+            <AdminSideBar active={8} openSidebar={openSidebar} />
           </div>
           <div className="w-full">
-            <AllSellers />
+            <AdminSettings />
           </div>
         </div>
       </div>
@@ -23,4 +23,4 @@ const AdminDashboardSellers = () => {
   );
 };
 
-export default AdminDashboardSellers;
+export default AdminDashboardSettings; 

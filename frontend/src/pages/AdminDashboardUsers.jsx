@@ -1,18 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import AdminHeader from "../components/Layout/AdminHeader";
 import AdminSideBar from "../components/Admin/Layout/AdminSideBar";
 import AllUsers from "../components/Admin/AllUsers";
 
 const AdminDashboardUsers = () => {
+  const [openSidebar, setOpenSidebar] = useState(false);
+
   return (
     <div>
-      <AdminHeader />
+      <AdminHeader setOpenSidebar={setOpenSidebar} openSidebar={openSidebar} />
       <div className="w-full flex">
-        <div className="flex items-start justify-between w-full">
-          <div className="w-[80px] 800px:w-[330px]">
-            <AdminSideBar active={4} />
+        <div className="flex items-start w-full">
+          <div className={`${openSidebar ? 'w-[250px]' : 'w-[80px]'} 800px:w-[330px]`}>
+            <AdminSideBar active={4} openSidebar={openSidebar} />
           </div>
-          <AllUsers />
+          <div className="w-full">
+            <AllUsers />
+          </div>
         </div>
       </div>
     </div>

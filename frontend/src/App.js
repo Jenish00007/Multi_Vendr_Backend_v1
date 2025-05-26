@@ -63,6 +63,7 @@ import axios from "axios";
 import { server } from "./server";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+import AdminDashboardSettings from "./pages/AdminDashboardSettings";
 
 const App = () => {
   const [stripeApikey, setStripeApiKey] = useState("");
@@ -332,6 +333,14 @@ const App = () => {
           element={
             <ProtectedAdminRoute>
               <AdminDashboardWithdraw />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin-settings"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboardSettings />
             </ProtectedAdminRoute>
           }
         />
