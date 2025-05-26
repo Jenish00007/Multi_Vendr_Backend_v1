@@ -5,6 +5,9 @@ import AdminDashboardOrders from "../pages/AdminDashboardOrders";
 import AdminDashboardProducts from "../pages/AdminDashboardProducts";
 import AdminDashboardEvents from "../pages/AdminDashboardEvents";
 import AdminDashboardWithdraw from "../pages/AdminDashboardWithdraw";
+import AdminDashboardModules from "../pages/AdminDashboardModules";
+import AdminDashboardCategories from "../pages/AdminDashboardCategories";
+import AdminDashboardSubcategories from "../pages/AdminDashboardSubcategories";
 
 export {
   AdminDashboardPage,
@@ -14,4 +17,7 @@ export {
   AdminDashboardProducts,
   AdminDashboardEvents,
   AdminDashboardWithdraw,
+  AdminDashboardModules,
+  AdminDashboardCategories,
+  AdminDashboardSubcategories,
 };
