@@ -7,7 +7,7 @@ import Events from "../components/Events/Events";
 import FeaturedProduct from "../components/Route/FeaturedProduct/FeaturedProduct";
 import Sponsored from "../components/Route/Sponsored";
 import Footer from "../components/Layout/Footer";
-
+import ProductSections from "../components/Home/ProductSections";
 
 const HomePage = () => {
     return (
@@ -15,6 +15,7 @@ const HomePage = () => {
             <Header activeHeading={1} />
             <Hero />
             <Categories />
+            <ProductSections />
             <BestDeals />
             <Events />
             <FeaturedProduct />
