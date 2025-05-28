@@ -4,7 +4,7 @@ import { GrWorkshop } from "react-icons/gr";
 import { RxDashboard } from "react-icons/rx";
 import { CiMoneyBill } from "react-icons/ci";
 import { Link } from "react-router-dom";
-import { BsHandbag, BsGraphUp } from "react-icons/bs";
+import { BsHandbag, BsGraphUp, BsGrid, BsListUl, BsListNested, BsImages } from "react-icons/bs";
 import { MdOutlineLocalOffer } from "react-icons/md";
 
 const AdminSideBar = ({ active, openSidebar }) => {
@@ -123,13 +123,73 @@ const AdminSideBar = ({ active, openSidebar }) => {
         </div>
 
         <div className="w-full flex items-center p-4 hover:bg-blue-50 rounded-lg transition-all duration-300 group">
+          <Link to="/admin-modules" className="w-full flex items-center">
+            <div className={`p-2 rounded-lg ${active === 9 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
+              <BsGrid size={22} />
+            </div>
+            <h5
+              className={`pl-4 text-[16px] font-medium ${
+                active === 9 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
+              }`}
+            >
+              Modules
+            </h5>
+          </Link>
+        </div>
+
+        <div className="w-full flex items-center p-4 hover:bg-blue-50 rounded-lg transition-all duration-300 group">
+          <Link to="/admin-categories" className="w-full flex items-center">
+            <div className={`p-2 rounded-lg ${active === 10 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
+              <BsListUl size={22} />
+            </div>
+            <h5
+              className={`pl-4 text-[16px] font-medium ${
+                active === 10 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
+              }`}
+            >
+              Categories
+            </h5>
+          </Link>
+        </div>
+
+        <div className="w-full flex items-center p-4 hover:bg-blue-50 rounded-lg transition-all duration-300 group">
+          <Link to="/admin-subcategories" className="w-full flex items-center">
+            <div className={`p-2 rounded-lg ${active === 11 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
+              <BsListNested size={22} />
+            </div>
+            <h5
+              className={`pl-4 text-[16px] font-medium ${
+                active === 11 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
+              }`}
+            >
+              Subcategories
+            </h5>
+          </Link>
+        </div>
+
+        <div className="w-full flex items-center p-4 hover:bg-blue-50 rounded-lg transition-all duration-300 group">
+          <Link to="/admin-banners" className="w-full flex items-center">
+            <div className={`p-2 rounded-lg ${active === 12 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
+              <BsImages size={22} />
+            </div>
+            <h5
+              className={`pl-4 text-[16px] font-medium ${
+                active === 12 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
+              }`}
+            >
+              Banners
+            </h5>
+          </Link>
+        </div>
+
+        <div className="w-full flex items-center p-4 hover:bg-blue-50 rounded-lg transition-all duration-300 group">
           <Link to="/admin-settings" className="w-full flex items-center">
-            <div className={`p-2 rounded-lg ${active === 8 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
+            <div className={`p-2 rounded-lg ${active === 13 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100'}`}>
               <FiSettings size={22} />
             </div>
             <h5
               className={`pl-4 text-[16px] font-medium ${
-                active === 8 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
+                active === 13 ? "text-blue-500" : "text-gray-600 group-hover:text-blue-500"
               }`}
             >
               Settings

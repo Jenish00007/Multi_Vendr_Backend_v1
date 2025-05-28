@@ -1,14 +1,16 @@
-require('dotenv').config();
+require('dotenv').config({
+  path: "config/.env",
+});
 const mongoose = require('mongoose');
-const User = require('./model/user');
-const Shop = require('./model/shop');
-const Product = require('./model/product');
-const Event = require('./model/event');
-const CouponCode = require('./model/coupounCode');
-const Order = require('./model/order');
-const Conversation = require('./model/conversation');
-const Message = require('./model/messages');
-const Withdraw = require('./model/withdraw');
+const User = require('../model/user');
+const Shop = require('../model/shop');
+const Product = require('../model/product');
+const Event = require('../model/event');
+const CouponCode = require('../model/coupounCode');
+const Order = require('../model/order');
+const Conversation = require('../model/conversation');
+const Message = require('../model/messages');
+const Withdraw = require('../model/withdraw');
 
 const MONGODB_URI = "mongodb+srv://jebilinjebilin96:Jebilin%402000@cluster0.tdceulr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
@@ -63,9 +65,14 @@ const seedData = async () => {
         phoneNumber: "1234567890",
         email: "fashion@store.com",
         zipCode: "12345",
-        avatar: "https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
         owner: users[1]._id,
-        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2" // Jenish@2000 hashed
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: true,
+        location: {
+          type: "Point",
+          coordinates: [-73.935242, 40.730610] // New York coordinates
+        }
       },
       {
         name: "Tech Gadgets",
@@ -74,9 +81,46 @@ const seedData = async () => {
         phoneNumber: "0987654321",
         email: "tech@gadgets.com",
         zipCode: "54321",
-        avatar: "https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
         owner: users[1]._id,
-        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2" // Jenish@2000 hashed
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: true,
+        location: {
+          type: "Point",
+          coordinates: [-122.419416, 37.774929] // San Francisco coordinates
+        }
+      },
+      {
+        name: "Home Decor",
+        description: "Beautiful home decoration items",
+        address: "789 Home Street",
+        phoneNumber: "5555555555",
+        email: "home@decor.com",
+        zipCode: "67890",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
+        owner: users[1]._id,
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: true,
+        location: {
+          type: "Point",
+          coordinates: [-87.629798, 41.878113] // Chicago coordinates
+        }
+      },
+      {
+        name: "Sports Equipment",
+        description: "Quality sports and fitness equipment",
+        address: "321 Sports Lane",
+        phoneNumber: "4444444444",
+        email: "sports@equipment.com",
+        zipCode: "13579",
+        avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
+        owner: users[1]._id,
+        password: "$2a$10$E1dcTwF/6UdWCofMImQjJ.LZo23bWvpPY8jHMCfdh9NKp8TgGbuu2", // Jenish@2000 hashed
+        featured: false,
+        location: {
+          type: "Point",
+          coordinates: [-118.243685, 34.052234] // Los Angeles coordinates
+        }
       }
     ]);
 
@@ -90,7 +134,7 @@ const seedData = async () => {
         originalPrice: 99.99,
         discountPrice: 79.99,
         stock: 100,
-        images: ["https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6"],
+        images: ["https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"],
         shopId: shops[0]._id,
         shop: shops[0]._id
       },
@@ -102,7 +146,7 @@ const seedData = async () => {
         originalPrice: 299.99,
         discountPrice: 249.99,
         stock: 50,
-        images: ["https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6"],
+        images: ["https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"],
         shopId: shops[1]._id,
         shop: shops[1]._id
       }
@@ -121,7 +165,7 @@ const seedData = async () => {
         originalPrice: 199.99,
         discountPrice: 149.99,
         stock: 200,
-        images: ["https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1EGUu8.img?w=768&h=432&m=6"],
+        images: ["https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"],
         shopId: shops[0]._id,
         shop: shops[0]._id
       }

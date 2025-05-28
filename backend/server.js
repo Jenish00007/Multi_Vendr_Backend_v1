@@ -67,9 +67,26 @@ const order = require("./controller/order");
 const message = require("./controller/message");
 const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
-app.use("/api/v2/withdraw", withdraw);
+
+
+// New routes
+const moduleRoutes = require("./routes/moduleRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const subcategoryRoutes = require("./routes/subcategoryRoutes");
+const userProductRoutes = require("./routes/userProduct");
+const searchRoutes = require("./routes/search");
+const shopRoutes = require("./routes/shopRoutes");
+const shopBannerRoutes = require("./routes/shopBannerRoutes");
+const adminBannerRoutes = require("./routes/adminBannerRoutes");
+const favoriteRoutes = require("./routes/favorite");
+const cartRoutes = require("./routes/cart");
+const itemRoutes = require("./routes/itemRoutes");
+const orderHistoryRoutes = require("./routes/orderHistory");
+const favoriteShopRoutes = require("./routes/favoriteShop");
+const distanceRoutes = require("./routes/distance");
 
 // end points
+app.use("/api/v2/withdraw", withdraw);
 app.use("/api/v2/user", user);
 app.use("/api/v2/conversation", conversation);
 app.use("/api/v2/message", message);
@@ -79,6 +96,23 @@ app.use("/api/v2/product", product);
 app.use("/api/v2/event", event);
 app.use("/api/v2/coupon", coupon);
 app.use("/api/v2/payment", payment);
+
+// New endpoints
+app.use("/api/v2/modules", moduleRoutes);
+app.use("/api/v2/categories", categoryRoutes);
+app.use("/api/v2/subcategories", subcategoryRoutes);
+app.use("/api/v2/user-products", userProductRoutes);
+app.use("/api/v2/search", searchRoutes);
+app.use("/api/v2/shops", shopRoutes);
+app.use("/api/v2/shop-banners", shopBannerRoutes);
+
+app.use("/api/v2/items", itemRoutes); 
+app.use("/api/admin-banner", adminBannerRoutes);
+app.use("/api/v2/favorites", favoriteRoutes);
+app.use("/api/v2/cart", cartRoutes);
+app.use("/api/v2/orders", orderHistoryRoutes);
+app.use("/api/v2/favorite-shops", favoriteShopRoutes);
+app.use("/config", distanceRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);
