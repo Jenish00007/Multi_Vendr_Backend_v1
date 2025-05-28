@@ -37,6 +37,9 @@ import {
   ShopSettingsPage,
   ShopWithDrawMoneyPage,
   ShopInboxPage,
+  ShopBannersPage,
+  ShopCreateBanner,
+  ShopEditBanner,
 } from "./routes/ShopRoutes";
 
 import {
@@ -47,6 +50,9 @@ import {
   AdminDashboardProducts,
   AdminDashboardEvents,
   AdminDashboardWithdraw,
+  AdminDashboardModules,
+  AdminDashboardCategories,
+  AdminDashboardSubcategories,
 } from "./routes/AdminRoutes";
 
 import { ToastContainer, toast } from "react-toastify";
@@ -279,6 +285,33 @@ const App = () => {
           }
         />
 
+        <Route
+          path="/dashboard-banners"
+          element={
+            <SellerProtectedRoute>
+              <ShopBannersPage />
+            </SellerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard-create-banner"
+          element={
+            <SellerProtectedRoute>
+              <ShopCreateBanner />
+            </SellerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard-edit-banner/:id"
+          element={
+            <SellerProtectedRoute>
+              <ShopEditBanner />
+            </SellerProtectedRoute>
+          }
+        />
+
         {/* Admin Routes */}
         <Route
           path="/admin/dashboard"
@@ -333,6 +366,30 @@ const App = () => {
           element={
             <ProtectedAdminRoute>
               <AdminDashboardWithdraw />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin-modules"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboardModules />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin-categories"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboardCategories />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin-subcategories"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboardSubcategories />
             </ProtectedAdminRoute>
           }
         />

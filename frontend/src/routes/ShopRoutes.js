@@ -11,6 +11,9 @@ import ShopAllRefunds from "../pages/Shop/ShopAllRefunds";
 import ShopSettingsPage from "../pages/Shop/ShopSettingsPage";
 import ShopWithDrawMoneyPage from "../pages/Shop/ShopWithDrawMoneyPage";
 import ShopInboxPage from "../pages/Shop/ShopInboxPage";
+import ShopBannersPage from "../pages/Shop/ShopBannersPage";
+import ShopCreateBanner from "../pages/Shop/ShopCreateBanner";
+import ShopEditBanner from "../pages/Shop/ShopEditBanner";
 
 export {
   ShopDashboardPage,
@@ -26,4 +29,7 @@ export {
   ShopSettingsPage,
   ShopWithDrawMoneyPage,
   ShopInboxPage,
+  ShopBannersPage,
+  ShopCreateBanner,
+  ShopEditBanner,
 };
