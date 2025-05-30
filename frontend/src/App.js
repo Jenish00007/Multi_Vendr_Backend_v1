@@ -70,6 +70,7 @@ import { server } from "./server";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import AdminDashboardSettings from "./pages/AdminDashboardSettings";
+import { AdminBannersPage } from "./routes/AdminRoutes";
 
 const App = () => {
   const [stripeApikey, setStripeApiKey] = useState("");
@@ -398,6 +399,14 @@ const App = () => {
           element={
             <ProtectedAdminRoute>
               <AdminDashboardSettings />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin-banners"
+          element={
+            <ProtectedAdminRoute>
+              <AdminBannersPage />
             </ProtectedAdminRoute>
           }
         />
