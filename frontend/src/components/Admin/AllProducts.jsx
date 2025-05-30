@@ -1,7 +1,7 @@
 import { Button } from "@material-ui/core";
 import { DataGrid } from "@material-ui/data-grid";
 import React, { useEffect, useState } from "react";
-import { AiOutlineDelete, AiOutlineEye, AiOutlineShopping, AiOutlineDollar, AiOutlineStock, AiOutlineFire } from "react-icons/ai";
+import { AiOutlineDelete, AiOutlineEye, AiOutlineShopping, AiOutlineDollar, AiOutlineStock, AiOutlineFire, AiOutlineClose } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { getAllProductsShop } from "../../redux/actions/product";
@@ -11,9 +11,12 @@ import axios from "axios";
 import { server } from "../../server";
 import { FiSearch } from "react-icons/fi";
 import { BsFilter } from "react-icons/bs";
+import { BsCurrencyRupee } from "react-icons/bs";
 
 const AllProducts = () => {
   const [data, setData] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     axios
@@ -22,6 +25,27 @@ const AllProducts = () => {
         setData(res.data.products);
       });
   }, []);
+
+  const handlePreview = (product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+  };
+
+  // Function to format currency in Indian format
+  const formatIndianCurrency = (amount) => {
+    const formatter = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return formatter.format(amount);
+  };
 
   const columns = [
     { 
@@ -72,7 +96,7 @@ const AllProducts = () => {
       flex: 0.6,
       renderCell: (params) => (
         <div className="flex items-center gap-2 text-green-600 font-medium">
-          <AiOutlineDollar />
+          <BsCurrencyRupee />
           {params.value || 'N/A'}
         </div>
       ),
@@ -113,11 +137,12 @@ const AllProducts = () => {
       type: "number",
       sortable: false,
       renderCell: (params) => (
-        <Link to={`/product/${params.id}`}>
-          <Button className="!bg-blue-500 !text-white hover:!bg-blue-600 transition-colors duration-300">
-            <AiOutlineEye size={20} />
-          </Button>
-        </Link>
+        <Button 
+          onClick={() => handlePreview(params.row)}
+          className="!bg-blue-500 !text-white hover:!bg-blue-600 transition-colors duration-300"
+        >
+          <AiOutlineEye size={20} />
+        </Button>
       ),
     },
   ];
@@ -129,10 +154,15 @@ const AllProducts = () => {
       row.push({
         id: item._id || '',
         name: item.name || 'N/A',
-        price: item.discountPrice ? "₹" + item.discountPrice : 'N/A',
+        price: item.discountPrice,
         Stock: item.stock || 0,
         sold: item?.sold_out || 0,
         image: item.images?.[0] || item.image,
+        description: item.description,
+        category: item.category,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        originalPrice: item.originalPrice,
+        images: item.images,
       });
     });
 
@@ -203,6 +233,97 @@ const AllProducts = () => {
           )}
         </div>
       </div>
+
+      {/* Product Preview Modal */}
+      {isModalOpen && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800">Product Details</h2>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <AiOutlineClose size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Product Images */}
+              <div className="space-y-4">
+                <div className="aspect-square rounded-lg overflow-hidden">
+                  <img
+                    src={selectedProduct.image}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {selectedProduct.images && selectedProduct.images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {selectedProduct.images.map((image, index) => (
+                      <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                        <img
+                          src={image}
+                          alt={`${selectedProduct.name} - ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Product Information */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">{selectedProduct.name}</h3>
+                  <p className="text-sm text-gray-500">Category: {selectedProduct.category}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Original Price:</span>
+                    <span className="font-medium">{formatIndianCurrency(selectedProduct.originalPrice)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Discount Price:</span>
+                    <span className="font-medium text-green-600">{formatIndianCurrency(selectedProduct.price)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Stock:</span>
+                    <span className="font-medium">{selectedProduct.Stock} units</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Sold:</span>
+                    <span className="font-medium">{selectedProduct.sold} units</span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Description</h4>
+                  <p className="text-gray-600 text-sm">{selectedProduct.description}</p>
+                </div>
+
+                {selectedProduct.tags && Array.isArray(selectedProduct.tags) && selectedProduct.tags.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Tags</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProduct.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -11,6 +11,48 @@ const s3Client = new S3Client({
   },
 });
 
+// Define folder structure for different upload types
+const UPLOAD_FOLDERS = {
+  // Shop related
+  PRODUCTS: 'products',
+  BANNERS: 'banners',
+  SHOP_AVATAR: 'shop-avatars',
+  SHOP_BANNER: 'shop-banners',
+  USER_AVATAR: 'user-avatars',
+  
+  // Admin related
+  ADMIN_BANNER: 'admin/banners',
+  CATEGORY_BANNER: 'admin/categories/banners',
+  SUBCATEGORY_BANNER: 'admin/subcategories/banners',
+  
+  // Module related
+  MODULE_BANNER: 'admin/modules/banners',
+
+  // Event related
+  EVENT_BANNER: 'events/banners',
+ 
+};
+
+// Map fieldnames to their respective folders
+const FOLDER_MAPPING = {
+  // Shop related
+  'images': UPLOAD_FOLDERS.PRODUCTS,
+  'banner': UPLOAD_FOLDERS.BANNERS,
+  'shopAvatar': UPLOAD_FOLDERS.SHOP_AVATAR,
+  'shopBanner': UPLOAD_FOLDERS.SHOP_BANNER,
+  'avatar': UPLOAD_FOLDERS.USER_AVATAR,
+  // Admin related
+  'adminBanner': UPLOAD_FOLDERS.ADMIN_BANNER,
+  'categoryBanner': UPLOAD_FOLDERS.CATEGORY_BANNER,
+  'subcategoryBanner': UPLOAD_FOLDERS.SUBCATEGORY_BANNER,
+  // Module related
+  'moduleBanner': UPLOAD_FOLDERS.MODULE_BANNER,
+  // Event related
+  'eventBanner': UPLOAD_FOLDERS.EVENT_BANNER,
+ 
+  
+};
+
 const upload = multer({
   storage: multerS3({
     s3: s3Client,
@@ -23,9 +65,14 @@ const upload = multer({
     key: function (req, file, cb) {
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       const filename = file.originalname.split(".")[0];
-      // Determine the folder based on the fieldname
-      const folder = file.fieldname === 'images' ? 'products' : 'banners';
-      cb(null, `${folder}/${filename}-${uniqueSuffix}${path.extname(file.originalname)}`);
+      
+      // Get the appropriate folder based on the fieldname
+      const folder = FOLDER_MAPPING[file.fieldname] || 'misc';
+      
+      // Create a path that includes the folder and a unique filename
+      const filePath = `${folder}/${filename}-${uniqueSuffix}${path.extname(file.originalname)}`;
+      
+      cb(null, filePath);
     }
   }),
   limits: {
@@ -67,5 +114,6 @@ const handleMulterError = (err, req, res, next) => {
 
 module.exports = {
   upload,
-  handleMulterError
+  handleMulterError,
+  UPLOAD_FOLDERS
 };

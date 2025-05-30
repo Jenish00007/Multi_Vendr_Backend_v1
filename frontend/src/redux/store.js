@@ -7,6 +7,7 @@ import { cartReducer } from "./reducers/cart";
 import { wishlistReducer } from "./reducers/wishlist";
 import { orderReducer } from "./reducers/order";
 import adminBannerReducer from "./reducers/adminBanner";
+import bannerReducer from "./reducers/banner";
 
 const Store = configureStore({
   reducer: {
@@ -19,6 +20,7 @@ const Store = configureStore({
     wishlist: wishlistReducer,
     order: orderReducer,
     adminBanner: adminBannerReducer,
+    banner: bannerReducer,
   },
 });
 
