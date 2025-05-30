@@ -116,7 +116,7 @@ const AllModules = () => {
       renderCell: (params) => (
         <div className="w-[50px] h-[50px] rounded-lg overflow-hidden">
           <img
-            src={`${server}/${params.value}`}
+            src={params.value}
             alt={params.row.name}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -181,7 +181,7 @@ const AllModules = () => {
             <AiOutlineEdit size={20} />
           </Button>
           <Button
-            onClick={() => handleDelete(params.row.id)}
+            onClick={() => handleDelete(params.row._id)}
             className="!bg-red-500 !text-white hover:!bg-red-600 transition-colors duration-300"
           >
             <AiOutlineDelete size={20} />
@@ -193,6 +193,7 @@ const AllModules = () => {
 
   const rows = modules?.map((module) => ({
     id: module._id,
+    _id: module._id,
     name: module.name,
     description: module.description,
     image: module.image,

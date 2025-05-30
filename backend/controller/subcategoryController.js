@@ -4,7 +4,15 @@ const Subcategory = require('../model/Subcategory');
 exports.createSubcategory = async (req, res) => {
     try {
         const { name, description, category } = req.body;
-        const image = req.file ? req.file.path : '';
+        
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'Image file is required'
+            });
+        }
+
+        const image = req.file.location || req.file.key;
 
         const subcategory = new Subcategory({
             name,
@@ -71,7 +79,7 @@ exports.updateSubcategory = async (req, res) => {
         const updateData = { name, description, category };
         
         if (req.file) {
-            updateData.image = req.file.path;
+            updateData.image = req.file.location || req.file.key;
         }
 
         const subcategory = await Subcategory.findByIdAndUpdate(

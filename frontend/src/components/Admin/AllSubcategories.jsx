@@ -131,8 +131,8 @@ const AllSubcategories = () => {
       renderCell: (params) => (
         <div className="w-[50px] h-[50px] rounded-lg overflow-hidden">
           <img
-            src={`${server}/${params.value}`}
-            alt={params.row.name}
+            src={params?.value}
+            alt={params?.row?.name}
             className="w-full h-full object-cover"
             onError={(e) => {
               e.target.src = "https://via.placeholder.com/50";
@@ -208,7 +208,7 @@ const AllSubcategories = () => {
             <AiOutlineEdit size={20} />
           </Button>
           <Button
-            onClick={() => handleDelete(params.row.id)}
+            onClick={() => handleDelete(params.row._id)}
             className="!bg-red-500 !text-white hover:!bg-red-600 transition-colors duration-300"
           >
             <AiOutlineDelete size={20} />
@@ -220,6 +220,7 @@ const AllSubcategories = () => {
 
   const rows = subcategories?.map((subcategory) => ({
     id: subcategory._id,
+    _id: subcategory._id,
     name: subcategory.name,
     description: subcategory.description,
     categoryId: subcategory.category?._id,
