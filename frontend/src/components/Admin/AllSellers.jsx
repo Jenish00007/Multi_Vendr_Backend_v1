@@ -99,13 +99,10 @@ const AllSellers = () => {
         <div className="flex items-center gap-3 w-full">
           <div className="relative w-10 h-10 rounded-full overflow-hidden bg-purple-50 flex-shrink-0">
             <img
-              src={params.row.avatar || "https://via.placeholder.com/40x40?text=Shop"}
+              src={params.row.avatar}
               alt={params.row.name}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "https://via.placeholder.com/40x40?text=Shop";
-              }}
+             
             />
           </div>
           <div className="flex flex-col justify-center min-w-[120px]">

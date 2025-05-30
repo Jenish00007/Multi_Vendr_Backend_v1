@@ -13,34 +13,27 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const sendShopToken = require("../utils/shopToken");
 
 // create shop
-router.post("/create-shop", upload.single("file"), async (req, res, next) => {
+router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) => {
   try {
     const { email } = req.body;
     const sellerEmail = await Shop.findOne({ email });
 
     if (sellerEmail) {
-      const filename = req.file.filename;
-      const filePath = `uploads/${filename}`;
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          console.log(err);
-          res.status(500).json({ message: "Error deleting file" });
-        }
-      });
       return next(new ErrorHandler("User already exists", 400));
     }
-
-    const filename = req.file.filename;
-    const fileUrl = path.join(filename);
 
     const seller = {
       name: req.body.name,
       email: email,
       password: req.body.password,
-      avatar: fileUrl,
+      avatar: req.file.location, // Use the S3 URL directly
       address: req.body.address,
       phoneNumber: req.body.phoneNumber,
       zipCode: req.body.zipCode,
+      location: {
+        type: 'Point',
+        coordinates: [0, 0] // Default coordinates, can be updated later
+      }
     };
 
     // Create shop directly without activation

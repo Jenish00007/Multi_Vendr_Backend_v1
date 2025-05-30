@@ -46,7 +46,7 @@ const AddVendor = ({ setOpen }) => {
       formDataToSend.append("address", formData.address);
       formDataToSend.append("zipCode", formData.zipCode);
       if (avatar) {
-        formDataToSend.append("file", avatar);
+        formDataToSend.append("shopAvatar", avatar);
       }
 
       const response = await axios.post(`${server}/shop/create-shop`, formDataToSend, {
@@ -233,7 +233,7 @@ const AddVendor = ({ setOpen }) => {
                         <span>Upload a file</span>
                         <input
                           id="file-upload"
-                          name="file-upload"
+                          name="shopAvatar"
                           type="file"
                           accept="image/*"
                           onChange={handleImageChange}
