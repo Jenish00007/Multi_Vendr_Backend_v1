@@ -44,7 +44,7 @@ const AllProducts = () => {
       renderCell: (params) => (
         <div className="w-[50px] h-[50px] rounded-lg overflow-hidden">
           <img
-            src={params.value ? `${server}/${params.value}` : "https://via.placeholder.com/50"}
+            src={params.value}
             alt={params.row.name}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -132,7 +132,7 @@ const AllProducts = () => {
         price: item.discountPrice ? "₹" + item.discountPrice : 'N/A',
         Stock: item.stock || 0,
         sold: item?.sold_out || 0,
-        image: item.images?.[0] || '',
+        image: item.images?.[0] || item.image,
       });
     });
 
