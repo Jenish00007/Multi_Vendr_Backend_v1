@@ -194,13 +194,19 @@ const AdminDashboardMain = () => {
         <div className="w-full p-4 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-2">
             <div>
-              <h6 className="text-[32px] font-Poppins font-bold flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                <div className="p-2.5 bg-blue-50 rounded-lg">
-                  <MdOutlineWavingHand className="text-blue-600" size={28} />
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">
+                  🛠️
+                </span>
+                <div>
+                  <div className="font-bold text-[28px] font-Poppins text-gray-900">
+                    Admin Dashboard.
+                  </div>
+                  <div className="text-gray-600 text-[16px] mt-1">
+                    Hello Here You Can Manage Your Admin Tasks.
+                  </div>
                 </div>
-                Welcome
-              </h6>
-              <p className="text-gray-600 mt-2 ml-1">Here's what's happening with your store today.</p>
+              </div>
             </div>
             <div className="w-full sm:w-auto text-left sm:text-right mt-2 sm:mt-0">
               <p className="text-sm text-gray-600">Current Date</p>
