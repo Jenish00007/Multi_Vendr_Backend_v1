@@ -195,87 +195,52 @@ const AdminDashboardMain = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-2">
             <div>
               <div className="flex items-center gap-3">
-                <span className="text-3xl">
-                  🛠️
-                </span>
+                <span className="text-3xl">🛠️</span>
                 <div>
-                  <div className="font-bold text-[28px] font-Poppins text-gray-900">
-                    Admin Dashboard.
-                  </div>
-                  <div className="text-gray-600 text-[16px] mt-1">
-                    Hello Here You Can Manage Your Admin Tasks.
-                  </div>
+                  <div className="font-bold text-[28px] font-Poppins text-gray-900">Admin Dashboard.</div>
+                  <div className="text-gray-600 text-[16px] mt-1">Hello Here You Can Manage Your Admin Tasks.</div>
                 </div>
               </div>
             </div>
             <div className="w-full sm:w-auto text-left sm:text-right mt-2 sm:mt-0">
               <p className="text-sm text-gray-600">Current Date</p>
-              <p className="text-lg font-semibold text-gray-800">{new Date().toLocaleDateString('en-IN', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</p>
+              <p className="text-lg font-semibold text-gray-800">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>
-          <div className="w-full block 800px:flex items-center justify-between gap-6">
-            <div className="w-full mb-4 800px:w-[30%] min-h-[20vh] bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 shadow-xl rounded-xl px-6 py-8 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-              <div className="flex items-center">
-                <div className="p-3 bg-white/20 rounded-lg">
-                  <BsCurrencyRupee size={35} className="text-white" />
-                </div>
-                <h3 className="text-[20px] font-medium text-white ml-4">
-                  Total Earnings
-                </h3>
-              </div>
-              <h5 className="pt-6 pl-[36px] text-[32px] font-bold text-white">
-                {formatIndianCurrency(adminBalance)}
-              </h5>
-              <div className="mt-6 flex items-center text-white/90 group">
-                <span className="text-sm font-medium">View detailed earnings</span>
-                <AiOutlineArrowRight className="ml-2 transform group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
 
-            <div className="w-full mb-4 800px:w-[30%] min-h-[20vh] bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 shadow-xl rounded-xl px-6 py-8 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-              <div className="flex items-center">
-                <div className="p-3 bg-white/20 rounded-lg">
-                  <MdOutlinePeopleAlt size={35} className="text-white" />
-                </div>
-                <h3 className="text-[20px] font-medium text-white ml-4">
-                  Active Sellers
-                </h3>
-              </div>
-              <h5 className="pt-6 pl-[36px] text-[32px] font-bold text-white">
-                {sellers && sellers.length}
-              </h5>
-              <Link to="/admin-sellers">
-                <div className="mt-6 flex items-center text-white/90 group">
-                  <span className="text-sm font-medium">View all sellers</span>
-                  <AiOutlineArrowRight className="ml-2 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
+          {/* Unified Summary Cards Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-10">
+            <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+              <span className="text-4xl mb-2">🛒</span>
+              <span className="text-base font-medium text-gray-600 mb-1">Items</span>
+              <span className="text-3xl font-bold text-gray-800 mb-1">56</span>
+              <span className="text-sm text-gray-400">0 Newly added</span>
             </div>
-
-            <div className="w-full mb-4 800px:w-[30%] min-h-[20vh] bg-gradient-to-br from-green-500 via-green-600 to-green-700 shadow-xl rounded-xl px-6 py-8 transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-              <div className="flex items-center">
-                <div className="p-3 bg-white/20 rounded-lg">
-                  <AiOutlineShoppingCart size={35} className="text-white" />
-                </div>
-                <h3 className="text-[20px] font-medium text-white ml-4">
-                  Total Orders
-                </h3>
-              </div>
-              <h5 className="pt-6 pl-[36px] text-[32px] font-bold text-white">
-                {adminOrders && adminOrders.length}
-              </h5>
-              <Link to="/admin-orders">
-                <div className="mt-6 flex items-center text-white/90 group">
-                  <span className="text-sm font-medium">View all orders</span>
-                  <AiOutlineArrowRight className="ml-2 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
+            <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+              <span className="text-4xl mb-2">🛍️</span>
+              <span className="text-base font-medium text-gray-600 mb-1">Orders</span>
+              <span className="text-3xl font-bold text-gray-800 mb-1">{adminOrders && adminOrders.length}</span>
+              <span className="text-sm text-gray-400">0 Newly added</span>
             </div>
+            <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+              <span className="text-4xl mb-2">🏪</span>
+              <span className="text-base font-medium text-gray-600 mb-1">Grocery Stores</span>
+              <span className="text-3xl font-bold text-gray-800 mb-1">{sellers && sellers.length}</span>
+              <span className="text-sm text-gray-400">0 Newly added</span>
+            </div>
+            <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+              <span className="text-4xl mb-2">👥</span>
+              <span className="text-base font-medium text-gray-600 mb-1">Customers</span>
+              <span className="text-3xl font-bold text-gray-800 mb-1">27</span>
+              <span className="text-sm text-gray-400">0 Newly added</span>
+            </div>
+            <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+              <span className="text-4xl mb-2">💰</span>
+              <span className="text-base font-medium text-gray-600 mb-1">Total Earnings</span>
+              <span className="text-3xl font-bold text-gray-800 mb-1">{formatIndianCurrency(adminBalance)}</span>
+              <span className="text-sm text-gray-400">0 Newly added</span>
+            </div>
+           
           </div>
 
           <div className="mt-10">
