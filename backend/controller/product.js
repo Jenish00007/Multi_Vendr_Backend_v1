@@ -7,7 +7,6 @@ const Order = require("../model/order");
 const Shop = require("../model/shop");
 const { upload } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
-const fs = require("fs");
 const mongoose = require("mongoose");
 
 // Helper function to validate MongoDB ObjectId
@@ -33,7 +32,7 @@ router.post(
       }
 
       const files = req.files;
-      const imageUrls = files.map((file) => `${file.filename}`);
+      const imageUrls = files.map((file) => file.location);
 
       const productData = req.body;
       productData.images = imageUrls;
@@ -91,17 +90,6 @@ router.delete(
       if (!productData) {
         return next(new ErrorHandler("Product not found!", 404));
       }
-
-      productData.images.forEach((imageUrl) => {
-        const filename = imageUrl;
-        const filePath = `uploads/${filename}`;
-
-        fs.unlink(filePath, (err) => {
-          if (err) {
-            console.log(err);
-          }
-        });
-      });
 
       await Product.findByIdAndDelete(productId);
 

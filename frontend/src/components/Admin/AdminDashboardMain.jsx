@@ -32,6 +32,19 @@ const AdminDashboardMain = () => {
 
   const adminBalance = adminEarning?.toFixed(2);
 
+  // Calculate total items count from all orders
+  const totalItemsCount = adminOrders?.reduce((acc, order) => {
+    return acc + order?.cart?.reduce((cartAcc, item) => cartAcc + item.qty, 0);
+  }, 0) || 0;
+   // Calculate total products count from all sellers
+   const totalProductsCount = sellers?.reduce((acc, seller) => {
+    return acc + (seller?.products?.length || 0);
+  }, 0) || 0;
+
+
+  // Get unique customers count
+  const uniqueCustomers = adminOrders ? new Set(adminOrders.map(order => order.user?._id)).size : 0;
+
   // Function to format currency in Indian format
   const formatIndianCurrency = (amount) => {
     const formatter = new Intl.NumberFormat('en-IN', {
@@ -309,8 +322,8 @@ const AdminDashboardMain = () => {
                 <span className="text-4xl">🛒</span>
               </div>
               <span className="text-base font-semibold text-gray-600 mb-2">Items</span>
-              <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">56</span>
-              <span className="text-sm text-gray-400">0 Newly added</span>
+              <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">{totalItemsCount}</span>
+              <span className="text-sm text-gray-400">Total Items Sold</span>
             </div>
 
             <div className="group bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-lg hover:shadow-2xl p-6 flex flex-col items-center transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 border border-purple-100/50">
@@ -321,7 +334,7 @@ const AdminDashboardMain = () => {
               <span className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent mb-2">
                 {adminOrders && adminOrders.length}
               </span>
-              <span className="text-sm text-gray-400">0 Newly added</span>
+              <span className="text-sm text-gray-400">Total Orders</span>
             </div>
 
             <div className="group bg-gradient-to-br from-white to-green-50 rounded-2xl shadow-lg hover:shadow-2xl p-6 flex flex-col items-center transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 border border-green-100/50">
@@ -332,7 +345,7 @@ const AdminDashboardMain = () => {
               <span className="text-4xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent mb-2">
                 {sellers && sellers.length}
               </span>
-              <span className="text-sm text-gray-400">0 Newly added</span>
+              <span className="text-sm text-gray-400">Total Stores</span>
             </div>
 
             <div className="group bg-gradient-to-br from-white to-orange-50 rounded-2xl shadow-lg hover:shadow-2xl p-6 flex flex-col items-center transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 border border-orange-100/50">
@@ -340,8 +353,8 @@ const AdminDashboardMain = () => {
                 <span className="text-4xl">👥</span>
               </div>
               <span className="text-base font-semibold text-gray-600 mb-2">Customers</span>
-              <span className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent mb-2">27</span>
-              <span className="text-sm text-gray-400">0 Newly added</span>
+              <span className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent mb-2">{uniqueCustomers}</span>
+              <span className="text-sm text-gray-400">Total Customers</span>
             </div>
 
             <div className="group bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-lg hover:shadow-2xl p-6 flex flex-col items-center transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 border border-emerald-100/50">

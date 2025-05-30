@@ -23,7 +23,9 @@ const upload = multer({
     key: function (req, file, cb) {
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       const filename = file.originalname.split(".")[0];
-      cb(null, `banners/${filename}-${uniqueSuffix}${path.extname(file.originalname)}`);
+      // Determine the folder based on the fieldname
+      const folder = file.fieldname === 'images' ? 'products' : 'banners';
+      cb(null, `${folder}/${filename}-${uniqueSuffix}${path.extname(file.originalname)}`);
     }
   }),
   limits: {

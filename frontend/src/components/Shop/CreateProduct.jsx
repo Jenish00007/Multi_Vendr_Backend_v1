@@ -71,151 +71,131 @@ const CreateProduct = () => {
                     Add a new product to your shop
                 </p>
             </div>
-            <div className="mt-6 sm:mt-8 mx-auto w-full">
-                <div className="bg-white py-6 sm:py-8 px-4 sm:px-6 lg:px-10 shadow-2xl rounded-xl sm:rounded-2xl transform transition-all hover:scale-[1.01]">
+
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <form className="space-y-6" onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            {/* Left Column */}
-                            <div className="space-y-4 sm:space-y-6">
-                                {/* Product Name */}
-                                <div>
-                                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                                        Product Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="mt-1">
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            required
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            className="appearance-none block w-full px-4 sm:px-6 py-3 sm:py-4 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            placeholder="Enter your product name..."
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Original Price */}
-                                <div>
-                                    <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700">
-                                        Original Price
-                                    </label>
-                                    <div className="mt-1">
-                                        <input
-                                            type="number"
-                                            name="originalPrice"
-                                            value={originalPrice}
-                                            onChange={(e) => setOriginalPrice(e.target.value)}
-                                            className="appearance-none block w-full px-4 sm:px-6 py-3 sm:py-4 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            placeholder="Enter original price..."
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right Column */}
-                            <div className="space-y-4 sm:space-y-6">
-                                {/* Tags */}
-                                <div>
-                                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700">
-                                        Tags
-                                    </label>
-                                    <div className="mt-1">
-                                        <input
-                                            type="text"
-                                            name="tags"
-                                            value={tags}
-                                            onChange={(e) => setTags(e.target.value)}
-                                            className="appearance-none block w-full px-4 sm:px-6 py-3 sm:py-4 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            placeholder="Enter your product tags..."
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Stock */}
-                                <div>
-                                    <label htmlFor="stock" className="block text-sm font-medium text-gray-700">
-                                        Product Stock <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="mt-1">
-                                        <input
-                                            type="number"
-                                            name="stock"
-                                            required
-                                            value={stock}
-                                            onChange={(e) => setStock(e.target.value)}
-                                            className="appearance-none block w-full px-4 sm:px-6 py-3 sm:py-4 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            placeholder="Enter stock quantity..."
-                                        />
-                                    </div>
-                                </div>
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                Product Name <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="text"
+                                    id="name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    required
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
                             </div>
                         </div>
 
-                        {/* Second Row - Category and Price */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            {/* Category */}
-                            <div>
-                                <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                                    Category <span className="text-red-500">*</span>
-                                </label>
-                                <div className="mt-1">
-                                    <select
-                                        className="appearance-none block w-full px-4 sm:px-6 py-3 sm:py-4 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                        required
-                                    >
-                                        <option value="">Choose a category</option>
-                                        {categoriesData &&
-                                            categoriesData.map((i) => (
-                                                <option value={i.title} key={i.title}>
-                                                    {i.title}
-                                                </option>
-                                            ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Discount Price */}
-                            <div>
-                                <label htmlFor="discountPrice" className="block text-sm font-medium text-gray-700">
-                                    Price (With Discount) <span className="text-red-500">*</span>
-                                </label>
-                                <div className="mt-1">
-                                    <input
-                                        type="number"
-                                        name="discountPrice"
-                                        required
-                                        value={discountPrice}
-                                        onChange={(e) => setDiscountPrice(e.target.value)}
-                                        className="appearance-none block w-full px-4 sm:px-6 py-3 sm:py-4 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                        placeholder="Enter discounted price..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Description - Full Width */}
-                        <div className="w-full">
+                        <div>
                             <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                                 Description <span className="text-red-500">*</span>
                             </label>
                             <div className="mt-1">
                                 <textarea
                                     id="description"
-                                    name="description"
-                                    required
-                                    rows="3"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="appearance-none block w-full px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                    placeholder="Enter your product description..."
+                                    required
+                                    rows={4}
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 />
                             </div>
                         </div>
 
-                        {/* Image Upload */}
+                        <div>
+                            <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                                Category <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-1">
+                                <select
+                                    id="category"
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    required
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                >
+                                    <option value="">Select a category</option>
+                                    {categoriesData.map((cat) => (
+                                        <option key={cat.id} value={cat.title}>
+                                            {cat.title}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="tags" className="block text-sm font-medium text-gray-700">
+                                Tags
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="text"
+                                    id="tags"
+                                    value={tags}
+                                    onChange={(e) => setTags(e.target.value)}
+                                    placeholder="Enter tags separated by commas"
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700">
+                                Original Price <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="number"
+                                    id="originalPrice"
+                                    value={originalPrice}
+                                    onChange={(e) => setOriginalPrice(e.target.value)}
+                                    required
+                                    min="0"
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="discountPrice" className="block text-sm font-medium text-gray-700">
+                                Discount Price <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="number"
+                                    id="discountPrice"
+                                    value={discountPrice}
+                                    onChange={(e) => setDiscountPrice(e.target.value)}
+                                    required
+                                    min="0"
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="stock" className="block text-sm font-medium text-gray-700">
+                                Stock <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="number"
+                                    id="stock"
+                                    value={stock}
+                                    onChange={(e) => setStock(e.target.value)}
+                                    required
+                                    min="0"
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
+                            </div>
+                        </div>
+
                         <div>
                             <label htmlFor="images" className="block text-sm font-medium text-gray-700">
                                 Product Images <span className="text-red-500">*</span>
