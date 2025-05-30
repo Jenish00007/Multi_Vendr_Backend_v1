@@ -53,6 +53,7 @@ import {
   AdminDashboardModules,
   AdminDashboardCategories,
   AdminDashboardSubcategories,
+  AdminDashboardBanners,
 } from "./routes/AdminRoutes";
 
 import { ToastContainer, toast } from "react-toastify";
@@ -70,7 +71,6 @@ import { server } from "./server";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import AdminDashboardSettings from "./pages/AdminDashboardSettings";
-import { AdminBannersPage } from "./routes/AdminRoutes";
 
 const App = () => {
   const [stripeApikey, setStripeApiKey] = useState("");
@@ -406,7 +406,7 @@ const App = () => {
           path="/admin-banners"
           element={
             <ProtectedAdminRoute>
-              <AdminBannersPage />
+              <AdminDashboardBanners />
             </ProtectedAdminRoute>
           }
         />
