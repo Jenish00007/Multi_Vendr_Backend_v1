@@ -3,17 +3,21 @@ const mongoose = require("mongoose");
 const adminBannerSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true
+    required: [true, "Please enter banner title"],
+    trim: true
   },
   description: {
-    type: String
+    type: String,
+    trim: true
   },
   image: {
     type: String,
-    required: true
+    required: [true, "Please upload banner image"],
+    trim: true
   },
   link: {
-    type: String
+    type: String,
+    trim: true
   },
   order: {
     type: Number,
@@ -31,6 +35,12 @@ const adminBannerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+// Update the updatedAt timestamp before saving
+adminBannerSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 module.exports = mongoose.model("AdminBanner", adminBannerSchema); 
