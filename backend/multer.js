@@ -3,6 +3,11 @@ const multerS3 = require("multer-s3");
 const { S3Client } = require("@aws-sdk/client-s3");
 const path = require("path");
 
+// Validate environment variables
+if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_BUCKET_NAME) {
+  throw new Error('Missing required AWS configuration. Please check your environment variables.');
+}
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -30,7 +35,6 @@ const UPLOAD_FOLDERS = {
 
   // Event related
   EVENT_BANNER: 'events/banners',
- 
 };
 
 // Map fieldnames to their respective folders
@@ -49,8 +53,6 @@ const FOLDER_MAPPING = {
   'moduleBanner': UPLOAD_FOLDERS.MODULE_BANNER,
   // Event related
   'eventBanner': UPLOAD_FOLDERS.EVENT_BANNER,
- 
-  
 };
 
 const upload = multer({
@@ -63,34 +65,73 @@ const upload = multer({
       cb(null, { fieldName: file.fieldname });
     },
     key: function (req, file, cb) {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const filename = file.originalname.split(".")[0];
-      
-      // Get the appropriate folder based on the fieldname
-      const folder = FOLDER_MAPPING[file.fieldname] || 'misc';
-      
-      // Create a path that includes the folder and a unique filename
-      const filePath = `${folder}/${filename}-${uniqueSuffix}${path.extname(file.originalname)}`;
-      
-      cb(null, filePath);
+      try {
+        // Log the incoming file object for debugging
+        console.log('File object:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype
+        });
+
+        // Validate file object
+        if (!file || !file.originalname) {
+          throw new Error('Invalid file object: missing originalname');
+        }
+
+        // Ensure we have a valid filename
+        const originalName = file.originalname;
+        const filename = originalName.split(".")[0] || 'unnamed-file';
+        const fileExtension = path.extname(originalName) || '.jpg';
+        
+        // Get the appropriate folder based on the fieldname
+        const folder = FOLDER_MAPPING[file.fieldname] || 'misc';
+        
+        // Create a unique suffix
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        
+        // Create a path that includes the folder and a unique filename
+        const filePath = `${folder}/${filename}-${uniqueSuffix}${fileExtension}`;
+
+        // Log the constructed path for debugging
+        console.log('Constructed file path:', filePath);
+        
+        cb(null, filePath);
+      } catch (error) {
+        console.error('Error in multer key function:', error);
+        cb(error);
+      }
     }
   }),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.mimetype)) {
-      const error = new Error('Invalid file type. Only JPEG, PNG, GIF and WEBP are allowed.');
-      error.code = 'INVALID_FILE_TYPE';
-      return cb(error, false);
+    try {
+      // Log the file being filtered
+      console.log('Filtering file:', {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        mimetype: file.mimetype
+      });
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.mimetype)) {
+        const error = new Error('Invalid file type. Only JPEG, PNG, GIF and WEBP are allowed.');
+        error.code = 'INVALID_FILE_TYPE';
+        return cb(error, false);
+      }
+      cb(null, true);
+    } catch (error) {
+      console.error('Error in fileFilter:', error);
+      cb(error, false);
     }
-    cb(null, true);
   }
 });
 
 // Error handling middleware
 const handleMulterError = (err, req, res, next) => {
+  console.error('Multer error:', err);
+  
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
