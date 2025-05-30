@@ -30,7 +30,7 @@ const AdminSideBar = ({ active, openSidebar }) => {
   );
 
   return (
-    <div className={`${openSidebar ? 'block' : 'hidden'} md:block w-full h-[90vh] bg-white shadow-sm overflow-y-scroll sticky top-0 left-0 z-10`}>
+    <div className={`${openSidebar ? 'block' : 'hidden'} md:block w-full h-screen bg-white shadow-xl sidebar-shadow overflow-y-scroll hide-scrollbar sticky top-0 left-0 z-10`}>
       <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-blue-600">
         <div className="relative">
           <input
