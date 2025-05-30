@@ -383,7 +383,7 @@ const AllSubcategories = () => {
                   <div className="mt-2">
                     <p className="text-sm text-gray-600 mb-1">Current Image:</p>
                     <img
-                      src={`${server}/${selectedSubcategory.image}`}
+                      src={selectedSubcategory.image}
                       alt={selectedSubcategory.name}
                       className="w-20 h-20 object-cover rounded-lg"
                       onError={(e) => {

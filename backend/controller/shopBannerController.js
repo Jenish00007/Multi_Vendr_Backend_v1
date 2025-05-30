@@ -1,8 +1,6 @@
 const ShopBanner = require("../model/shopBanner");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const ErrorHandler = require("../utils/ErrorHandler");
-const fs = require("fs");
-const path = require("path");
 
 // Create new banner
 exports.createBanner = catchAsyncErrors(async (req, res, next) => {
@@ -18,7 +16,7 @@ exports.createBanner = catchAsyncErrors(async (req, res, next) => {
       shopId,
       title,
       description,
-      image: req.file.filename,
+      image: req.file.location,
       link,
       order: order || 0
     });
@@ -64,12 +62,7 @@ exports.updateBanner = catchAsyncErrors(async (req, res, next) => {
 
     // If new image is uploaded
     if (req.file) {
-      // Delete old image
-      const oldImagePath = path.join(__dirname, "../uploads", banner.image);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-      }
-      banner.image = req.file.filename;
+      banner.image = req.file.location;
     }
 
     banner.title = title || banner.title;
@@ -99,12 +92,6 @@ exports.deleteBanner = catchAsyncErrors(async (req, res, next) => {
 
   if (!banner) {
     return next(new ErrorHandler("Banner not found", 404));
-  }
-
-  // Delete image file
-  const imagePath = path.join(__dirname, "../uploads", banner.image);
-  if (fs.existsSync(imagePath)) {
-    fs.unlinkSync(imagePath);
   }
 
   await banner.deleteOne();

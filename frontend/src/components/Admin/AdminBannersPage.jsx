@@ -205,6 +205,7 @@ const AdminBannersPage = () => {
     link: banner.link,
     image: banner.image,
     createdAt: banner.createdAt,
+    tags: Array.isArray(banner.tags) ? banner.tags : [],
   })) || [];
 
   if (loading) {
