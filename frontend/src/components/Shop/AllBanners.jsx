@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DataGrid } from "@material-ui/data-grid";
 import { Button } from "@material-ui/core";
 import { AiOutlineDelete, AiOutlineEdit, AiOutlinePicture } from "react-icons/ai";
@@ -7,20 +7,27 @@ import { toast } from "react-toastify";
 import { getAllBannersOfShop, deleteBanner } from "../../redux/actions/banner";
 import Loader from "../Layout/Loader";
 import { Link } from "react-router-dom";
+import { FiSearch } from "react-icons/fi";
+import { backend_url } from "../../server";
 
 const AllBanners = () => {
     const dispatch = useDispatch();
     const { seller } = useSelector((state) => state.seller);
     const { banners, isLoading } = useSelector((state) => state.banner);
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         dispatch(getAllBannersOfShop(seller._id));
-    }, [dispatch]);
+    }, [dispatch, seller._id]);
 
     const handleDelete = (id) => {
         dispatch(deleteBanner(id));
-        toast.success("Banner deleted successfully!");
     };
+
+    const filteredBanners = banners?.filter((banner) =>
+        banner.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        banner.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const columns = [
         {
