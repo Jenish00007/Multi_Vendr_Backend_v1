@@ -5,6 +5,8 @@ const router = express.Router();
 const Product = require("../model/product");
 const Order = require("../model/order");
 const Shop = require("../model/shop");
+const Category = require("../model/Category");
+const Subcategory = require("../model/Subcategory");
 const { upload } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
 const mongoose = require("mongoose");
@@ -20,15 +22,42 @@ router.post(
   upload.array("images"),
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const shopId = req.body.shopId;
+      const { shopId, category, subcategory } = req.body;
       
+      // Validate shop ID
       if (!shopId || !isValidObjectId(shopId)) {
         return next(new ErrorHandler("Invalid shop ID format", 400));
       }
 
+      // Validate category ID
+      if (!category || !isValidObjectId(category)) {
+        return next(new ErrorHandler("Invalid category ID format", 400));
+      }
+
+      // Validate subcategory ID
+      if (!subcategory || !isValidObjectId(subcategory)) {
+        return next(new ErrorHandler("Invalid subcategory ID format", 400));
+      }
+
+      // Check if shop exists
       const shop = await Shop.findById(shopId);
       if (!shop) {
         return next(new ErrorHandler("Shop not found!", 404));
+      }
+
+      // Check if category exists
+      const categoryExists = await Category.findById(category);
+      if (!categoryExists) {
+        return next(new ErrorHandler("Category not found!", 404));
+      }
+
+      // Check if subcategory exists and belongs to the selected category
+      const subcategoryExists = await Subcategory.findOne({
+        _id: subcategory,
+        category: category
+      });
+      if (!subcategoryExists) {
+        return next(new ErrorHandler("Subcategory not found or does not belong to the selected category!", 404));
       }
 
       const files = req.files;
@@ -61,7 +90,9 @@ router.get(
         return next(new ErrorHandler("Invalid shop ID format", 400));
       }
 
-      const products = await Product.find({ shopId });
+      const products = await Product.find({ shopId })
+        .populate('category', 'name')
+        .populate('subcategory', 'name');
 
       res.status(200).json({
         success: true,
@@ -108,7 +139,10 @@ router.get(
   "/get-all-products",
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const products = await Product.find().sort({ createdAt: -1 });
+      const products = await Product.find()
+        .populate('category', 'name')
+        .populate('subcategory', 'name')
+        .sort({ createdAt: -1 });
 
       res.status(200).json({
         success: true,
@@ -197,9 +231,12 @@ router.get(
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const products = await Product.find().sort({
-        createdAt: -1,
-      });
+      const products = await Product.find()
+        .populate('category', 'name')
+        .populate('subcategory', 'name')
+        .sort({
+          createdAt: -1,
+        });
       res.status(200).json({
         success: true,
         products,
