@@ -55,7 +55,7 @@ exports.getFavorites = catchAsyncErrors(async (req, res, next) => {
     const favorites = await Favorite.find({ user: userId })
         .populate({
             path: 'product',
-            select: 'name price images description'
+            select: 'name price originalPrice discountPrice images description'
         });
 
     res.status(200).json({
