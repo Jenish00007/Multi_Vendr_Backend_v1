@@ -25,6 +25,7 @@ const ProductCard = ({ data, isEvent }) => {
     const { cart } = useSelector((state) => state.cart);
     const [click, setClick] = useState(false);
     const [open, setOpen] = useState(false);
+    const [imageError, setImageError] = useState(false);
     const dispatch = useDispatch();
 
     useEffect(() => {
@@ -60,6 +61,29 @@ const ProductCard = ({ data, isEvent }) => {
         }
     }
 
+    const getImageUrl = () => {
+        if (!data.images || data.images.length === 0) {
+            return "https://via.placeholder.com/400x400?text=No+Image";
+        }
+
+        const image = data.images[0];
+        if (typeof image === 'string') {
+            if (image.startsWith('http')) {
+                return image;
+            }
+            return image;
+        }
+        
+        if (image.url) {
+            if (image.url.startsWith('http')) {
+                return image.url;
+            }
+            return image.url;
+        }
+
+        return "https://via.placeholder.com/400x400?text=No+Image";
+    };
+
     return (
         <div className='w-full h-auto min-h-[370px] bg-white rounded-lg shadow-sm p-3 relative cursor-pointer transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1'>
             <div className='flex justify-end'>
@@ -81,11 +105,16 @@ const ProductCard = ({ data, isEvent }) => {
             </div>
 
             <Link to={`${isEvent === true ? `/product/${data._id}?isEvent=true` : `/product/${data._id}`}`}>
-                <div className="relative overflow-hidden rounded-lg aspect-square">
+                <div className="relative overflow-hidden rounded-lg aspect-square bg-gray-50">
                     <img
-                        src={`${backend_url}${data.images && data.images[0]}`}
-                        alt="product"
+                        src={getImageUrl()}
+                        alt={data.name}
                         className='w-full h-full object-contain transform transition-transform duration-300 hover:scale-110'
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "https://via.placeholder.com/400x400?text=No+Image";
+                            setImageError(true);
+                        }}
                     />
                     {data.discountPrice && (
                         <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-sm flex items-center">
@@ -98,6 +127,15 @@ const ProductCard = ({ data, isEvent }) => {
 
             <Link to={`${isEvent === true ? `/product/${data._id}?isEvent=true` : `/product/${data._id}`}`}>
                 <div className="flex items-center mt-2">
+                    <img 
+                        src={data.shop.avatar ? data.shop.avatar : "https://via.placeholder.com/30x30?text=Shop"}
+                        alt={data.shop.name}
+                        className="w-6 h-6 rounded-full object-cover mr-2"
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "https://via.placeholder.com/30x30?text=Shop";
+                        }}
+                    />
                     <AiOutlineShop className="text-blue-500 mr-1 flex-shrink-0" />
                     <h5 className={`${styles.shop_name} text-blue-500 truncate`}>{data.shop.name}</h5>
                 </div>

@@ -34,7 +34,8 @@ app.use(
   })
 );
 
-app.use("/", express.static("uploads"));
+// Remove local uploads static route since we're using S3
+// app.use("/", express.static("uploads"));
 
 app.get("/test", (req, res) => {
   res.send("Hello World!");
@@ -97,6 +98,7 @@ app.use("/api/v2/event", event);
 app.use("/api/v2/coupon", coupon);
 app.use("/api/v2/payment", payment);
 
+
 // New endpoints
 app.use("/api/v2/modules", moduleRoutes);
 app.use("/api/v2/categories", categoryRoutes);
@@ -107,12 +109,12 @@ app.use("/api/v2/shops", shopRoutes);
 app.use("/api/v2/shop-banners", shopBannerRoutes);
 
 app.use("/api/v2/items", itemRoutes); 
-app.use("/api/admin-banner", adminBannerRoutes);
+app.use("/api/v2/admin-banner", adminBannerRoutes);
 app.use("/api/v2/favorites", favoriteRoutes);
 app.use("/api/v2/cart", cartRoutes);
 app.use("/api/v2/orders", orderHistoryRoutes);
 app.use("/api/v2/favorite-shops", favoriteShopRoutes);
-app.use("/config", distanceRoutes);
+app.use("/api/v2/config", distanceRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);

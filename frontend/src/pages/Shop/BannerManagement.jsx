@@ -154,7 +154,7 @@ const BannerManagement = () => {
       key: "image",
       render: (image) => (
         <img
-          src={`${server}/${image}`}
+          src={image}
           alt="Banner"
           style={{ width: "100px", height: "60px", objectFit: "cover" }}
         />

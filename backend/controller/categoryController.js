@@ -5,7 +5,38 @@ const Subcategory = require('../model/Subcategory');
 exports.createCategory = async (req, res) => {
     try {
         const { name, description, module } = req.body;
-        const image = req.file ? req.file.path : '';
+        
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                error: 'Category name is required'
+            });
+        }
+
+        if (!module) {
+            return res.status(400).json({
+                success: false,
+                error: 'Module ID is required'
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'Image file is required'
+            });
+        }
+
+        // Get the S3 URL from the uploaded file
+        const image = req.file.location || req.file.key;
+        
+        if (!image) {
+            console.error('No image URL found in file object:', req.file);
+            return res.status(400).json({
+                success: false,
+                error: 'Failed to get image URL from S3'
+            });
+        }
 
         const category = new Category({
             name,
@@ -20,6 +51,7 @@ exports.createCategory = async (req, res) => {
             data: category
         });
     } catch (error) {
+        console.error('Error creating category:', error);
         res.status(400).json({
             success: false,
             error: error.message
@@ -72,7 +104,18 @@ exports.updateCategory = async (req, res) => {
         const updateData = { name, description, module };
         
         if (req.file) {
-            updateData.image = req.file.path;
+            // Get the S3 URL from the uploaded file
+            const image = req.file.location || req.file.key;
+            
+            if (!image) {
+                console.error('No image URL found in file object:', req.file);
+                return res.status(400).json({
+                    success: false,
+                    error: 'Failed to get image URL from S3'
+                });
+            }
+            
+            updateData.image = image;
         }
 
         const category = await Category.findByIdAndUpdate(
@@ -93,6 +136,7 @@ exports.updateCategory = async (req, res) => {
             data: category
         });
     } catch (error) {
+        console.error('Error updating category:', error);
         res.status(400).json({
             success: false,
             error: error.message

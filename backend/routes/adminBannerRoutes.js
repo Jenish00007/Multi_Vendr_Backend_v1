@@ -11,7 +11,7 @@ const { isAdmin } = require("../middleware/auth");
 const { upload } = require("../multer");
 
 // Create new banner
-router.post("/create", isAdmin, upload.single("image"), createBanner);
+router.post("/create", upload.single("image"), createBanner);
 
 // Get all banners
 router.get("/all", getAllBanners);
@@ -20,9 +20,9 @@ router.get("/all", getAllBanners);
 router.get("/:id", getBanner);
 
 // Update banner
-router.put("/:id", isAdmin, upload.single("image"), updateBanner);
+router.put("/:id", upload.single("image"), updateBanner);
 
 // Delete banner
-router.delete("/:id", isAdmin, deleteBanner);
+router.delete("/:id", deleteBanner);
 
 module.exports = router; 
