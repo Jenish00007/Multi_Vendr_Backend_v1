@@ -1,14 +1,14 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "react-toastify";
-
+import { server } from "../../server";
 // Create banner
 export const createAdminBanner = createAsyncThunk(
   "adminBanner/create",
   async (formData) => {
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/admin-banner/create`,
+        `${server}/admin-banner/create`,
         formData,
         {
           withCredentials: true,
@@ -32,7 +32,7 @@ export const getAllAdminBanners = createAsyncThunk(
   async () => {
     try {
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/admin-banner/all`,
+        `${server}/admin-banner/all`,
         {
           withCredentials: true,
         }
@@ -51,7 +51,7 @@ export const updateAdminBanner = createAsyncThunk(
   async ({ id, formData }) => {
     try {
       const response = await axios.put(
-        `${process.env.REACT_APP_API_URL}/admin-banner/${id}`,
+        `${server}/admin-banner/${id}`,
         formData,
         {
           withCredentials: true,
@@ -75,7 +75,7 @@ export const deleteAdminBanner = createAsyncThunk(
   async (id) => {
     try {
       const response = await axios.delete(
-        `${process.env.REACT_APP_API_URL}/admin-banner/${id}`,
+        `${server}/admin-banner/${id}`,
         {
           withCredentials: true,
         }

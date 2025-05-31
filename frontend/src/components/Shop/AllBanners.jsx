@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DataGrid } from "@material-ui/data-grid";
 import { Button } from "@material-ui/core";
 import { AiOutlineDelete, AiOutlineEdit, AiOutlinePicture } from "react-icons/ai";
@@ -7,39 +7,38 @@ import { toast } from "react-toastify";
 import { getAllBannersOfShop, deleteBanner } from "../../redux/actions/banner";
 import Loader from "../Layout/Loader";
 import { Link } from "react-router-dom";
+import { FiSearch } from "react-icons/fi";
 import { backend_url } from "../../server";
 
 const AllBanners = () => {
     const dispatch = useDispatch();
     const { seller } = useSelector((state) => state.seller);
     const { banners, isLoading } = useSelector((state) => state.banner);
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         dispatch(getAllBannersOfShop(seller._id));
-    }, [dispatch]);
+    }, [dispatch, seller._id]);
 
     const handleDelete = (id) => {
         dispatch(deleteBanner(id));
-        toast.success("Banner deleted successfully!");
     };
 
+    const filteredBanners = banners?.filter((banner) =>
+        banner.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        banner.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const columns = [
-        { 
-            field: "id", 
-            headerName: "Banner ID", 
-            minWidth: 180, 
-            flex: 0.8,
-            headerClassName: 'custom-header',
-            cellClassName: 'custom-cell',
+        {
+            field: "id",
+            headerName: "Banner ID",
+            minWidth: 150,
+            flex: 0.7,
             renderCell: (params) => (
-                <div className="flex items-center gap-3 w-full">
-                    <div className="p-2.5 bg-blue-50 rounded-lg flex-shrink-0">
-                        <AiOutlinePicture className="text-blue-600" size={20} />
-                    </div>
-                    <div className="flex flex-col justify-center min-w-[100px]">
-                        <span className="font-medium text-gray-700 truncate leading-tight">#{params.value.slice(-6)}</span>
-                        <span className="text-xs text-gray-500 leading-tight mt-0.5">Banner ID</span>
-                    </div>
+                <div className="flex items-center gap-2">
+                    <AiOutlinePicture className="text-blue-500" />
+                    <span className="text-gray-700">#{params.value ? params.value.slice(-6) : 'N/A'}</span>
                 </div>
             ),
         },
@@ -47,15 +46,18 @@ const AllBanners = () => {
             field: "image",
             headerName: "Image",
             minWidth: 100,
-            flex: 0.7,
-            headerClassName: 'custom-header',
-            cellClassName: 'custom-cell',
+            flex: 0.8,
             renderCell: (params) => (
-                <img
-                    src={`${backend_url}${params.row.image}`}
-                    alt=""
-                    className="w-[50px] h-[50px] object-cover rounded-lg"
-                />
+                <div className="w-[50px] h-[50px] rounded-lg overflow-hidden">
+                    <img
+                        src={params.value}
+                        alt={params.row.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            e.target.src = "https://via.placeholder.com/50";
+                        }}
+                    />
+                </div>
             ),
         },
         {
@@ -63,22 +65,49 @@ const AllBanners = () => {
             headerName: "Title",
             minWidth: 180,
             flex: 1.4,
-            headerClassName: 'custom-header',
-            cellClassName: 'custom-cell',
+            renderCell: (params) => (
+                <div className="font-medium text-gray-800 hover:text-blue-500 transition-colors duration-300">
+                    {params.value || 'N/A'}
+                </div>
+            ),
+        },
+        {
+            field: "description",
+            headerName: "Description",
+            minWidth: 200,
+            flex: 1.4,
+            renderCell: (params) => (
+                <div className="text-gray-600">
+                    {params.value ? (params.value.length > 50 ? `${params.value.substring(0, 50)}...` : params.value) : 'N/A'}
+                </div>
+            ),
+        },
+        {
+            field: "link",
+            headerName: "Link",
+            minWidth: 150,
+            flex: 1,
+            renderCell: (params) => (
+                <a
+                    href={params.value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:text-blue-600 truncate"
+                >
+                    {params.value || 'N/A'}
+                </a>
+            ),
         },
         {
             field: "isActive",
             headerName: "Status",
-            minWidth: 130,
-            flex: 0.7,
-            headerClassName: 'custom-header',
-            cellClassName: 'custom-cell',
+            minWidth: 100,
+            flex: 0.6,
             renderCell: (params) => (
-                <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${params.row.isActive ? "bg-green-500" : "bg-red-500"}`} />
-                    <span className={`font-medium ${params.row.isActive ? "text-green-600" : "text-red-600"}`}>
-                        {params.row.isActive ? "Active" : "Inactive"}
-                    </span>
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    params.value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                    {params.value ? 'Active' : 'Inactive'}
                 </div>
             ),
         },
@@ -89,8 +118,6 @@ const AllBanners = () => {
             headerName: "",
             type: "number",
             sortable: false,
-            headerClassName: 'custom-header',
-            cellClassName: 'custom-cell',
             renderCell: (params) => {
                 return (
                     <Link to={`/dashboard-edit-banner/${params.id}`}>
@@ -108,8 +135,6 @@ const AllBanners = () => {
             headerName: "",
             type: "number",
             sortable: false,
-            headerClassName: 'custom-header',
-            cellClassName: 'custom-cell',
             renderCell: (params) => {
                 return (
                     <Button 
@@ -129,8 +154,10 @@ const AllBanners = () => {
         banners.forEach((item) => {
             row.push({
                 id: item._id,
-                image: item.image,
                 title: item.title,
+                description: item.description,
+                image: item.image,
+                link: item.link,
                 isActive: item.isActive,
             });
         });

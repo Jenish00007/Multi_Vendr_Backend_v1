@@ -131,8 +131,8 @@ const AllCategories = () => {
       renderCell: (params) => (
         <div className="w-[50px] h-[50px] rounded-lg overflow-hidden">
           <img
-            src={`${server}/${params.value}`}
-            alt={params.row.name}
+            src={params?.value}
+            alt={params?.row.name}
             className="w-full h-full object-cover"
             onError={(e) => {
               e.target.src = "https://via.placeholder.com/50";
@@ -208,7 +208,7 @@ const AllCategories = () => {
             <AiOutlineEdit size={20} />
           </Button>
           <Button
-            onClick={() => handleDelete(params.row.id)}
+            onClick={() => handleDelete(params.row._id)}
             className="!bg-red-500 !text-white hover:!bg-red-600 transition-colors duration-300"
           >
             <AiOutlineDelete size={20} />
@@ -220,6 +220,7 @@ const AllCategories = () => {
 
   const rows = categories?.map((category) => ({
     id: category._id,
+    _id: category._id,
     name: category.name,
     description: category.description,
     moduleId: category.module?._id,

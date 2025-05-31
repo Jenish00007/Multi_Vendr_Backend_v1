@@ -37,6 +37,7 @@ const AllSellers = () => {
           email: item.email || 'N/A',
           phoneNumber: item.phoneNumber || 'N/A',
           status: item.status || 'inactive',
+          avatar: item.avatar || null,
         }));
       setRows(formattedRows);
     }
@@ -96,8 +97,13 @@ const AllSellers = () => {
       cellClassName: 'custom-cell',
       renderCell: (params) => (
         <div className="flex items-center gap-3 w-full">
-          <div className="p-2.5 bg-purple-50 rounded-lg flex-shrink-0">
-            <AiOutlineShop className="text-purple-600" size={20} />
+          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-purple-50 flex-shrink-0">
+            <img
+              src={params.row.avatar}
+              alt={params.row.name}
+              className="w-full h-full object-cover"
+             
+            />
           </div>
           <div className="flex flex-col justify-center min-w-[120px]">
             <span className="font-medium text-gray-700 truncate leading-tight">{params.row.name}</span>
