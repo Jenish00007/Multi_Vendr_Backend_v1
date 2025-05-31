@@ -207,21 +207,15 @@ const ProfileContent = ({ active }) => {
 
 // All orders
 const AllOrders = () => {
-    const { user } = useSelector((state) => state.user);
-
     const { orders } = useSelector((state) => state.order);
     const dispatch = useDispatch();
 
     useEffect(() => {
-        dispatch(getAllOrdersOfUser(user._id));
+        dispatch(getAllOrdersOfUser());
     }, []);
-
-
-
 
     const columns = [
         { field: "id", headerName: "Order ID", minWidth: 150, flex: 0.7 },
-
         {
             field: "status",
             headerName: "Status",
@@ -240,7 +234,6 @@ const AllOrders = () => {
             minWidth: 130,
             flex: 0.7,
         },
-
         {
             field: "total",
             headerName: "Total",
@@ -248,7 +241,15 @@ const AllOrders = () => {
             minWidth: 130,
             flex: 0.8,
         },
-
+        {
+            field: "createdAt",
+            headerName: "Order Date",
+            minWidth: 130,
+            flex: 0.8,
+            renderCell: (params) => {
+                return new Date(params.getValue(params.id, "createdAt")).toLocaleDateString();
+            }
+        },
         {
             field: " ",
             flex: 1,
@@ -276,12 +277,12 @@ const AllOrders = () => {
         orders.forEach((item) => {
             row.push({
                 id: item._id,
-                itemsQty: item.cart.length,
-                total: "US$ " + item.totalPrice,
+                itemsQty: item.itemsQty,
+                total: "₹" + item.totalPrice.toFixed(2),
                 status: item.status,
+                createdAt: item.createdAt
             });
         });
-
 
     return (
         <>
@@ -293,7 +294,6 @@ const AllOrders = () => {
                     disableSelectionOnClick
                     autoHeight
                 />
-
             </div>
         </>
     )
@@ -344,6 +344,16 @@ const AllRefundOrders = () => {
         },
 
         {
+            field: "createdAt",
+            headerName: "Order Date",
+            minWidth: 130,
+            flex: 0.8,
+            renderCell: (params) => {
+                return new Date(params.getValue(params.id, "createdAt")).toLocaleDateString();
+            }
+        },
+
+        {
             field: " ",
             flex: 1,
             minWidth: 150,
@@ -370,9 +380,10 @@ const AllRefundOrders = () => {
         eligibleOrders.forEach((item) => {
             row.push({
                 id: item._id,
-                itemsQty: item.cart.length,
-                total: "US$ " + item.totalPrice,
+                itemsQty: item.itemsQty,
+                total: "₹" + item.totalPrice.toFixed(2),
                 status: item.status,
+                createdAt: item.createdAt
             });
         });
 
@@ -434,6 +445,16 @@ const TrackOrder = () => {
         },
 
         {
+            field: "createdAt",
+            headerName: "Order Date",
+            minWidth: 130,
+            flex: 0.8,
+            renderCell: (params) => {
+                return new Date(params.getValue(params.id, "createdAt")).toLocaleDateString();
+            }
+        },
+
+        {
             field: " ",
             flex: 1,
             minWidth: 150,
@@ -454,15 +475,16 @@ const TrackOrder = () => {
         },
     ];
 
-    const row = []
+    const row = [];
 
     orders &&
         orders.forEach((item) => {
             row.push({
                 id: item._id,
-                itemsQty: item.cart.length,
-                total: "US$ " + item.totalPrice,
+                itemsQty: item.itemsQty,
+                total: "₹" + item.totalPrice.toFixed(2),
                 status: item.status,
+                createdAt: item.createdAt
             });
         });
 
