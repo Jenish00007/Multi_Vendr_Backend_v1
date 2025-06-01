@@ -6,24 +6,33 @@ const Shop = require("../model/shop");
 
 // Check if user is authenticated or not
 exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
-  const { token } = req.cookies;
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next(new ErrorHandler("Please login to continue", 401));
+  }
+
+  const token = authHeader.split(' ')[1];
   if (!token) {
     return next(new ErrorHandler("Please login to continue", 401));
   }
-  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
+  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
   req.user = await User.findById(decoded.id);
   next();
 });
 
 exports.isSeller = catchAsyncErrors(async (req, res, next) => {
-  const { seller_token } = req.cookies;
-  if (!seller_token) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return next(new ErrorHandler("Please login to continue", 401));
   }
 
-  const decoded = jwt.verify(seller_token, process.env.JWT_SECRET_KEY);
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return next(new ErrorHandler("Please login to continue", 401));
+  }
 
+  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
   const seller = await Shop.findById(decoded.id);
   
   if (!seller) {
