@@ -96,18 +96,62 @@ exports.getCart = catchAsyncErrors(async (req, res, next) => {
     const cartItems = await Cart.find({ user: userId })
         .populate({
             path: 'product',
-            select: 'name price images description stock'
+            select: 'name price originalPrice discountPrice images description stock'
         });
 
-    // Calculate total
+    // Calculate totals
+    let subtotal = 0;
+    let totalDiscount = 0;
     let total = 0;
-    cartItems.forEach(item => {
-        total += item.product.price * item.quantity;
+    let totalItems = 0;
+    let totalOriginalPrice = 0;
+
+    const itemsWithPrices = cartItems.map(item => {
+        // Ensure price values are numbers
+        const price = Number(item.product.price) || 0;
+        const originalPrice = Number(item.product.originalPrice) || price;
+        const quantity = Number(item.quantity) || 0;
+
+        const itemSubtotal = price * quantity;
+        const itemOriginalTotal = originalPrice * quantity;
+        const itemDiscount = itemOriginalTotal - itemSubtotal;
+        const itemTotal = itemSubtotal;
+        
+        subtotal += itemSubtotal;
+        totalOriginalPrice += itemOriginalTotal;
+        totalDiscount += itemDiscount;
+        totalItems += quantity;
+
+        return {
+            ...item.toObject(),
+            itemSubtotal,
+            itemOriginalTotal,
+            itemDiscount,
+            itemTotal,
+            priceDetails: {
+                unitPrice: price,
+                originalUnitPrice: originalPrice,
+                totalPrice: itemTotal,
+                totalOriginalPrice: itemOriginalTotal,
+                discountAmount: itemDiscount
+            }
+        };
     });
+
+    // Calculate final totals
+    total = subtotal;
 
     res.status(200).json({
         success: true,
-        cartItems,
-        total
+        cartItems: itemsWithPrices,
+        priceSummary: {
+            totalItems,
+            subtotal: Number(subtotal.toFixed(2)),
+            totalOriginalPrice: Number(totalOriginalPrice.toFixed(2)),
+            totalDiscount: Number(totalDiscount.toFixed(2)),
+            total: Number(total.toFixed(2)),
+            currency: "INR",
+            savings: Number(totalDiscount.toFixed(2))
+        }
     });
 }); 

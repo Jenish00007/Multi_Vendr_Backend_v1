@@ -10,8 +10,15 @@ const orderSchema = new mongoose.Schema({
     required: true,
   },
   user: {
-    type: Object,
-    required: true,
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true
+    },
+    name: String,
+    email: String,
+    phoneNumber: String
   },
   totalPrice: {
     type: Number,
@@ -44,5 +51,9 @@ const orderSchema = new mongoose.Schema({
     default: Date.now(),
   },
 });
+
+// Add indexes for better query performance
+orderSchema.index({ "user._id": 1 });
+orderSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Order", orderSchema);

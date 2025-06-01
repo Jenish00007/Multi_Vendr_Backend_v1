@@ -10,9 +10,18 @@ const Product = require("../model/product");
 // create new order
 router.post(
   "/create-order",
+  isAuthenticated,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { cart, shippingAddress, user, totalPrice, paymentInfo } = req.body;
+      const { cart, shippingAddress, totalPrice, paymentInfo } = req.body;
+
+      // Get user details from the authenticated token
+      const user = {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        phoneNumber: req.user.phoneNumber
+      };
 
       //   group cart items by shopId
       const shopItemsMap = new Map();
@@ -44,6 +53,7 @@ router.post(
         orders,
       });
     } catch (error) {
+      console.error("Error creating order:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
@@ -51,18 +61,48 @@ router.post(
 
 // get all orders of user
 router.get(
-  "/get-all-orders/:userId",
+  "/get-all-orders",
+  isAuthenticated,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const orders = await Order.find({ "user._id": req.params.userId }).sort({
-        createdAt: -1,
-      });
+      console.log("Fetching orders for user:", req.user._id);
+      
+      const orders = await Order.find({ "user._id": req.user._id })
+        .sort({
+          createdAt: -1,
+        })
+        .populate("cart.product", "name images price discountPrice")
+        .populate("cart.shopId", "name");
+
+      console.log("Found orders:", orders.length);
+      if (orders.length > 0) {
+        console.log("Sample order:", JSON.stringify(orders[0], null, 2));
+      }
+
+      const formattedOrders = orders.map((order) => ({
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+          _id: item._id,
+          name: item.product?.name || "Product not found",
+          quantity: item.quantity,
+          price: item.price,
+          image: item.product?.images[0]?.url || "",
+          shopName: item.shopId?.name || "Shop not found",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+      }));
 
       res.status(200).json({
         success: true,
-        orders,
+        orders: formattedOrders,
       });
     } catch (error) {
+      console.error("Error fetching orders:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
@@ -227,6 +267,66 @@ router.get(
         orders,
       });
     } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// get order by id
+router.get(
+  "/get-order/:id",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      console.log("Fetching order with ID:", req.params.id);
+      console.log("Authenticated user ID:", req.user._id);
+
+      const order = await Order.findById(req.params.id)
+        .populate("cart.product", "name images price discountPrice")
+        .populate("cart.shopId", "name");
+
+      console.log("Found order:", order ? "Yes" : "No");
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      // Check if the order belongs to the authenticated user
+      console.log("Order user ID:", order.user._id);
+      console.log("Request user ID:", req.user._id);
+
+      if (order.user._id.toString() !== req.user._id.toString()) {
+        return next(new ErrorHandler("You are not authorized to view this order", 403));
+      }
+
+      const formattedOrder = {
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+          _id: item._id,
+          name: item.product?.name || "Product not found",
+          quantity: item.quantity,
+          price: item.price,
+          image: item.product?.images[0]?.url || "",
+          shopName: item.shopId?.name || "Shop not found",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        deliveredAt: order.deliveredAt,
+        paidAt: order.paidAt
+      };
+
+      console.log("Sending formatted order response");
+
+      res.status(200).json({
+        success: true,
+        order: formattedOrder,
+      });
+    } catch (error) {
+      console.error("Error in get-order-by-id:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
