@@ -85,6 +85,7 @@ const itemRoutes = require("./routes/itemRoutes");
 const orderHistoryRoutes = require("./routes/orderHistory");
 const favoriteShopRoutes = require("./routes/favoriteShop");
 const distanceRoutes = require("./routes/distance");
+const configurationRoutes = require("./routes/configurationRoutes");
 
 // end points
 app.use("/api/v2/withdraw", withdraw);
@@ -107,7 +108,6 @@ app.use("/api/v2/user-products", userProductRoutes);
 app.use("/api/v2/search", searchRoutes);
 app.use("/api/v2/shops", shopRoutes);
 app.use("/api/v2/shop-banners", shopBannerRoutes);
-
 app.use("/api/v2/items", itemRoutes); 
 app.use("/api/v2/admin-banner", adminBannerRoutes);
 app.use("/api/v2/favorites", favoriteRoutes);
@@ -115,6 +115,7 @@ app.use("/api/v2/cart", cartRoutes);
 app.use("/api/v2/orders", orderHistoryRoutes);
 app.use("/api/v2/favorite-shops", favoriteShopRoutes);
 app.use("/api/v2/config", distanceRoutes);
+app.use("/api/v2/settings", configurationRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);
