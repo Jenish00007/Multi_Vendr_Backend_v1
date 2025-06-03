@@ -86,6 +86,7 @@ const orderHistoryRoutes = require("./routes/orderHistory");
 const favoriteShopRoutes = require("./routes/favoriteShop");
 const distanceRoutes = require("./routes/distance");
 const configurationRoutes = require("./routes/configurationRoutes");
+const deliverymanRoutes = require("./routes/deliveryman.routes");
 
 // end points
 app.use("/api/v2/withdraw", withdraw);
@@ -116,6 +117,7 @@ app.use("/api/v2/orders", orderHistoryRoutes);
 app.use("/api/v2/favorite-shops", favoriteShopRoutes);
 app.use("/api/v2/config", distanceRoutes);
 app.use("/api/v2/settings", configurationRoutes);
+app.use("/api/v2/deliveryman", deliverymanRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);
