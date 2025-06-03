@@ -71,6 +71,9 @@ import { server } from "./server";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import AdminDashboardSettings from "./pages/AdminDashboardSettings";
+import DeliveryManLogin from "./pages/DeliveryManLogin";
+import DeliveryManRegistration from "./pages/DeliveryManRegistration";
+import DeliveryManManagement from "./pages/DeliveryManManagement";
 
 const App = () => {
   const [stripeApikey, setStripeApiKey] = useState("");
@@ -407,6 +410,18 @@ const App = () => {
           element={
             <ProtectedAdminRoute>
               <AdminDashboardBanners />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        {/* Delivery Man Routes */}
+        <Route path="/deliveryman-login" element={<DeliveryManLogin />} />
+        <Route path="/deliveryman-register" element={<DeliveryManRegistration />} />
+        <Route
+          path="/admin/deliverymen"
+          element={
+            <ProtectedAdminRoute>
+              <DeliveryManManagement />
             </ProtectedAdminRoute>
           }
         />

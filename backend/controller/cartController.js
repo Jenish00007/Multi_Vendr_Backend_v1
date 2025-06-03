@@ -40,9 +40,36 @@ exports.addToCart = catchAsyncErrors(async (req, res, next) => {
         });
     }
 
+    // Populate product details
+    cartItem = await Cart.findById(cartItem._id).populate({
+        path: 'product',
+        select: 'name price originalPrice discountPrice images description stock'
+    });
+
+    // Calculate price details
+    const price = Number(cartItem.product.price) || 0;
+    const originalPrice = Number(cartItem.product.originalPrice) || price;
+    const itemSubtotal = price * quantity;
+    const itemOriginalTotal = originalPrice * quantity;
+    const itemDiscount = itemOriginalTotal - itemSubtotal;
+
+    const cartItemWithPrices = {
+        ...cartItem.toObject(),
+        itemSubtotal,
+        itemOriginalTotal,
+        itemDiscount,
+        priceDetails: {
+            unitPrice: price,
+            originalUnitPrice: originalPrice,
+            totalPrice: itemSubtotal,
+            totalOriginalPrice: itemOriginalTotal,
+            discountAmount: itemDiscount
+        }
+    };
+
     res.status(201).json({
         success: true,
-        cartItem
+        cartItem: cartItemWithPrices
     });
 });
 
