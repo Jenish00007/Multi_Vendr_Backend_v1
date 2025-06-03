@@ -69,7 +69,6 @@ const message = require("./controller/message");
 const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
 
-
 // New routes
 const moduleRoutes = require("./routes/moduleRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -86,7 +85,7 @@ const orderHistoryRoutes = require("./routes/orderHistory");
 const favoriteShopRoutes = require("./routes/favoriteShop");
 const distanceRoutes = require("./routes/distance");
 const configurationRoutes = require("./routes/configurationRoutes");
-const deliverymanRoutes = require("./routes/deliveryman.routes");
+const adminRoutes = require("./routes/adminRoutes");
 
 // end points
 app.use("/api/v2/withdraw", withdraw);
@@ -99,7 +98,6 @@ app.use("/api/v2/product", product);
 app.use("/api/v2/event", event);
 app.use("/api/v2/coupon", coupon);
 app.use("/api/v2/payment", payment);
-
 
 // New endpoints
 app.use("/api/v2/modules", moduleRoutes);
@@ -117,7 +115,7 @@ app.use("/api/v2/orders", orderHistoryRoutes);
 app.use("/api/v2/favorite-shops", favoriteShopRoutes);
 app.use("/api/v2/config", distanceRoutes);
 app.use("/api/v2/settings", configurationRoutes);
-app.use("/api/v2/deliveryman", deliverymanRoutes);
+app.use("/api/v2/admin", adminRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);
