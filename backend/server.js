@@ -69,7 +69,6 @@ const message = require("./controller/message");
 const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
 
-
 // New routes
 const moduleRoutes = require("./routes/moduleRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -86,38 +85,37 @@ const orderHistoryRoutes = require("./routes/orderHistory");
 const favoriteShopRoutes = require("./routes/favoriteShop");
 const distanceRoutes = require("./routes/distance");
 const configurationRoutes = require("./routes/configurationRoutes");
-const deliverymanRoutes = require("./routes/deliveryman.routes");
+const adminRoutes = require("./routes/adminRoutes");
 
 // end points
-app.use("/api/v2/withdraw", withdraw);
-app.use("/api/v2/user", user);
-app.use("/api/v2/conversation", conversation);
-app.use("/api/v2/message", message);
-app.use("/api/v2/order", order);
-app.use("/api/v2/shop", shop);
-app.use("/api/v2/product", product);
-app.use("/api/v2/event", event);
-app.use("/api/v2/coupon", coupon);
-app.use("/api/v2/payment", payment);
-
+app.use("/v2/withdraw", withdraw);
+app.use("/v2/user", user);
+app.use("/v2/conversation", conversation);
+app.use("/v2/message", message);
+app.use("/v2/order", order);
+app.use("/v2/shop", shop);
+app.use("/v2/product", product);
+app.use("/v2/event", event);
+app.use("/v2/coupon", coupon);
+app.use("/v2/payment", payment);
 
 // New endpoints
-app.use("/api/v2/modules", moduleRoutes);
-app.use("/api/v2/categories", categoryRoutes);
-app.use("/api/v2/subcategories", subcategoryRoutes);
-app.use("/api/v2/user-products", userProductRoutes);
-app.use("/api/v2/search", searchRoutes);
-app.use("/api/v2/shops", shopRoutes);
-app.use("/api/v2/shop-banners", shopBannerRoutes);
-app.use("/api/v2/items", itemRoutes); 
-app.use("/api/v2/admin-banner", adminBannerRoutes);
-app.use("/api/v2/favorites", favoriteRoutes);
-app.use("/api/v2/cart", cartRoutes);
-app.use("/api/v2/orders", orderHistoryRoutes);
-app.use("/api/v2/favorite-shops", favoriteShopRoutes);
-app.use("/api/v2/config", distanceRoutes);
-app.use("/api/v2/settings", configurationRoutes);
-app.use("/api/v2/deliveryman", deliverymanRoutes);
+app.use("/v2/modules", moduleRoutes);
+app.use("/v2/categories", categoryRoutes);
+app.use("/v2/subcategories", subcategoryRoutes);
+app.use("/v2/user-products", userProductRoutes);
+app.use("/v2/search", searchRoutes);
+app.use("/v2/shops", shopRoutes);
+app.use("/v2/shop-banners", shopBannerRoutes);
+app.use("/v2/items", itemRoutes);
+app.use("/v2/admin-banner", adminBannerRoutes);
+app.use("/v2/favorites", favoriteRoutes);
+app.use("/v2/cart", cartRoutes);
+app.use("/v2/orders", orderHistoryRoutes);
+app.use("/v2/favorite-shops", favoriteShopRoutes);
+app.use("/v2/config", distanceRoutes);
+app.use("/v2/settings", configurationRoutes);
+app.use("/v2/admin", adminRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);
