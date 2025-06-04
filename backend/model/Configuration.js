@@ -40,6 +40,24 @@ const configurationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    banner: {
+        type: String,
+        default: "https://qauds.s3.ap-south-1.amazonaws.com/misc/groceries-packages-delivery-covid19-quarantine-shopping-concept-handsome-smiling-courier-red-uniform-give-cheeky-wink-as-delivering-food-box-online-order-client-house-1749022161520-475913107.jpg"
+    },
+    homepageContent: {
+        title: {
+            type: String,
+            default: "Fresh Groceries"
+        },
+        subtitle: {
+            type: String,
+            default: "Delivered to Your Door"
+        },
+        description: {
+            type: String,
+            default: "Discover our wide selection of fresh fruits, vegetables, dairy products, and pantry essentials. Shop from the comfort of your home and get your groceries delivered right to your doorstep."
+        }
+    },
     appColors: {
         primary: {
             type: String
