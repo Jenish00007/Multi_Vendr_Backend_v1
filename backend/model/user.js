@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -54,8 +55,8 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now(),
   },
-  resetPasswordToken: String,
-  resetPasswordTime: Date,
+  otp: String,
+  otpExpiry: Date,
 });
 
 //  Hash password
@@ -77,6 +78,32 @@ userSchema.methods.getJwtToken = function () {
 // compare password
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate OTP
+userSchema.methods.generateOTP = function () {
+  // Generate 6 digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // Hash OTP and add to userSchema
+  this.otp = crypto
+    .createHash("sha256")
+    .update(otp)
+    .digest("hex");
+
+  this.otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  return otp;
+};
+
+// Verify OTP
+userSchema.methods.verifyOTP = function (enteredOTP) {
+  const hashedOTP = crypto
+    .createHash("sha256")
+    .update(enteredOTP)
+    .digest("hex");
+
+  return this.otp === hashedOTP && this.otpExpiry > Date.now();
 };
 
 module.exports = mongoose.model("User", userSchema);
