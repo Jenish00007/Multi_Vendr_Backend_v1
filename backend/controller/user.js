@@ -5,10 +5,11 @@ const { upload } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
-const sendMail = require("../utils/sendMail");
+const sendEmail = require("../config/email.config");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const { isAuthenticated, isAdmin } = require("../middleware/auth");
+const crypto = require("crypto");
 
 const router = express.Router();
 
@@ -360,6 +361,110 @@ router.delete(
         success: true,
         message: "User deleted successfully!",
       });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// forgot password
+router.post(
+  "/forgot-password",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const user = await User.findOne({ email: req.body.email });
+
+      if (!user) {
+        return next(new ErrorHandler("User not found with this email", 404));
+      }
+
+      // Generate OTP
+      const otp = user.generateOTP();
+      await user.save({ validateBeforeSave: false });
+
+      const emailTemplate = `Your OTP for password reset is: ${otp}\n\nThis OTP will expire in 10 minutes.\n\nIf you have not requested this email then, please ignore it.`;
+      
+      try {
+        
+        await sendEmail(user.email, `Password Recovery OTP`, emailTemplate);
+        
+        res.status(200).json({
+          success: true,
+          message: `OTP sent to ${user.email} successfully`,
+        });
+      } catch (error) {
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+
+        await user.save({ validateBeforeSave: false });
+
+        return next(new ErrorHandler(error.message, 500));
+      }
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// verify OTP
+router.post(
+  "/verify-otp",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { email, otp } = req.body;
+
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      const isValidOTP = user.verifyOTP(otp);
+
+      if (!isValidOTP) {
+        return next(new ErrorHandler("Invalid or expired OTP", 400));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "OTP verified successfully",
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// reset password
+router.put(
+  "/reset-password",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { email, otp, password, confirmPassword } = req.body;
+
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      const isValidOTP = user.verifyOTP(otp);
+
+      if (!isValidOTP) {
+        return next(new ErrorHandler("Invalid or expired OTP", 400));
+      }
+
+      if (password !== confirmPassword) {
+        return next(new ErrorHandler("Password doesn't match", 400));
+      }
+
+      user.password = password;
+      user.otp = undefined;
+      user.otpExpiry = undefined;
+
+      await user.save();
+
+      sendToken(user, 200, res);
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }

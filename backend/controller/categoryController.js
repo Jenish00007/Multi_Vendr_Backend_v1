@@ -85,10 +85,20 @@ exports.getCategoryById = async (req, res) => {
                 error: 'Category not found'
             });
         }
-        res.status(200).json({
+
+        // Get subcategories for this category
+        const subcategories = await Subcategory.find({ category: req.params.id });
+
+        // Add subcategories to the response
+        const response = {
             success: true,
-            data: category
-        });
+            data: {
+                ...category.toObject(),
+                subcategories
+            }
+        };
+
+        res.status(200).json(response);
     } catch (error) {
         res.status(400).json({
             success: false,
