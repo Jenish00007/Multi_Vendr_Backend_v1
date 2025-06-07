@@ -50,6 +50,10 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now(),
   },
+  otp: {
+    type: String,
+    required: false,
+  },
 });
 
 // Add indexes for better query performance
