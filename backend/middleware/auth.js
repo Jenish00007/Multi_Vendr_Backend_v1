@@ -16,9 +16,29 @@ exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Please login to continue", 401));
   }
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-  req.user = await User.findById(decoded.id);
-  next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    
+    // Check if the token is for an admin user
+    if (decoded.role === "Admin") {
+      return next(new ErrorHandler("Admin users cannot access this resource", 403));
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Double check the user's role
+    if (user.role === "Admin") {
+      return next(new ErrorHandler("Admin users cannot access this resource", 403));
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return next(new ErrorHandler("Invalid token", 401));
+  }
 });
 
 exports.isSeller = catchAsyncErrors(async (req, res, next) => {
