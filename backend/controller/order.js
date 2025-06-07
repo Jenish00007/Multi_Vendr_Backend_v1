@@ -38,12 +38,15 @@ router.post(
       const orders = [];
 
       for (const [shopId, items] of shopItemsMap) {
+        // Generate a 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const order = await Order.create({
           cart: items,
           shippingAddress,
           user,
           totalPrice,
           paymentInfo,
+          otp, // Save OTP in the order
         });
         orders.push(order);
       }
@@ -51,6 +54,7 @@ router.post(
       res.status(201).json({
         success: true,
         orders,
+        otps: orders.map(order => order.otp), // Return OTPs for now
       });
     } catch (error) {
       console.error("Error creating order:", error);
