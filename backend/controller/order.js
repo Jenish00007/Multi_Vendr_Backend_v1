@@ -31,19 +31,31 @@ router.post(
         if (!shopItemsMap.has(shopId)) {
           shopItemsMap.set(shopId, []);
         }
-        shopItemsMap.get(shopId).push(item);
+        // Store product ID and shop ID for population
+        const cartItem = {
+          product: item._id, // Store product ID for population
+          shopId: shopId, // Store shop ID for population
+          quantity: item.qty || 1,
+          price: item.price,
+          name: item.name,
+          images: item.images
+        };
+        shopItemsMap.get(shopId).push(cartItem);
       }
 
       // create an order for each shop
       const orders = [];
 
       for (const [shopId, items] of shopItemsMap) {
+        // Generate a 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const order = await Order.create({
           cart: items,
           shippingAddress,
           user,
           totalPrice,
           paymentInfo,
+          otp, // Save OTP in the order
         });
         orders.push(order);
       }
@@ -51,6 +63,7 @@ router.post(
       res.status(201).json({
         success: true,
         orders,
+        otps: orders.map(order => order.otp), // Return OTPs for now
       });
     } catch (error) {
       console.error("Error creating order:", error);
@@ -282,8 +295,14 @@ router.get(
       console.log("Authenticated user ID:", req.user._id);
 
       const order = await Order.findById(req.params.id)
-        .populate("cart.product", "name images price discountPrice")
-        .populate("cart.shopId", "name");
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name'
+        });
 
       console.log("Found order:", order ? "Yes" : "No");
 
@@ -307,16 +326,20 @@ router.get(
         itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
         items: order.cart.map((item) => ({
           _id: item._id,
-          name: item.product?.name || "Product not found",
+          name: item.name || item.product?.name || "Product not found",
           quantity: item.quantity,
           price: item.price,
-          image: item.product?.images[0]?.url || "",
+          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
           shopName: item.shopId?.name || "Shop not found",
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
         deliveredAt: order.deliveredAt,
-        paidAt: order.paidAt
+        paidAt: order.paidAt,
+        otp: order.otp || null,
+        delivery_instruction: order.delivery_instruction || '',
+        delivery_man: order.delivery_man || null,
+        store: order.store || null
       };
 
       console.log("Sending formatted order response");
