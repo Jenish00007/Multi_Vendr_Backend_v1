@@ -15,35 +15,74 @@ const router = express.Router();
 
 router.post("/create-user", upload.single("file"), async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
-    const userEmail = await User.findOne({ email });
-
-    if (userEmail) {
-      // if user already exits account is not create and file is deleted
-      const filename = req.file.filename;
-      const filePath = `uploads/${filename}`;
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          console.log(err);
-          res.status(500).json({ message: "Error deleting file" });
-        }
-      });
-
-      return next(new ErrorHandler("User already exits", 400));
-    }
-
-    const filename = req.file.filename;
-    const fileUrl = path.join(filename);
-
-    const user = await User.create({
-      name,
-      email,
-      password,
-      avatar: fileUrl,
+    console.log('Registration request received:', {
+      body: req.body,
+      file: req.file ? {
+        filename: req.file.filename,
+        location: req.file.location
+      } : null
     });
 
-    sendToken(user, 201, res);
+    const { name, email, password, phoneNumber } = req.body;
+    
+    // Validate required fields
+    if (!name || !email || !password || !phoneNumber) {
+      console.log('Missing required fields:', { name, email, phoneNumber });
+      return next(new ErrorHandler("All fields are required", 400));
+    }
+
+    // Check if user exists
+    const userEmail = await User.findOne({ email: email.toLowerCase().trim() });
+    console.log('Existing user check:', userEmail ? 'User found' : 'No user found');
+
+    if (userEmail) {
+      return next(new ErrorHandler("User already exists", 400));
+    }
+
+    if (!req.file) {
+      return next(new ErrorHandler("Please upload an avatar", 400));
+    }
+
+    // Create user object
+    const userData = {
+      name,
+      email: email.toLowerCase().trim(),
+      password,
+      phoneNumber,
+      avatar: req.file.location
+    };
+    console.log('Creating user with data:', { ...userData, password: '[REDACTED]' });
+
+    try {
+      // Create user
+      const user = await User.create(userData);
+      console.log('User created successfully:', { 
+        id: user._id, 
+        email: user.email, 
+        name: user.name 
+      });
+
+      // Send response
+      const token = user.getJwtToken();
+      console.log('Generated token for user');
+
+      res.status(201).json({
+        success: true,
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          avatar: user.avatar
+        }
+      });
+    } catch (dbError) {
+      console.error('Database error during user creation:', dbError);
+      return next(new ErrorHandler(dbError.message, 400));
+    }
   } catch (err) {
+    console.error('Registration error:', err);
     return next(new ErrorHandler(err.message, 400));
   }
 });
@@ -53,28 +92,48 @@ router.post(
   "/login-user",
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { email, password } = req.body;
+      console.log('Login attempt with:', { 
+        email: req.body.email,
+        phoneNumber: req.body.phoneNumber 
+      });
+      
+      const { email, phoneNumber, password } = req.body;
 
-      if (!email || !password) {
-        return next(new ErrorHandler("Please provide the all filelds", 400));
+      if ((!email && !phoneNumber) || !password) {
+        console.log('Missing credentials');
+        return next(new ErrorHandler("Please provide email/phone and password", 400));
       }
-      const user = await User.findOne({ email }).select("+password");
-      // +password is used to select the password field from the database
+
+      // Find user with either email or phone number
+      let user;
+      if (email) {
+        user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+      } else {
+        user = await User.findOne({ phoneNumber }).select("+password");
+      }
+      
+      console.log('User lookup result:', user ? 'User found' : 'User not found');
 
       if (!user) {
-        return next(new ErrorHandler("user doesn't exits", 400));
+        console.log('No user found');
+        return next(new ErrorHandler("User doesn't exist", 400));
       }
 
-      // compore password with database password
+      // compare password with database password
       const isPasswordValid = await user.comparePassword(password);
+      console.log('Password validation:', isPasswordValid ? 'Valid' : 'Invalid');
 
       if (!isPasswordValid) {
+        console.log('Invalid password');
         return next(
-          new ErrorHandler("Please provide the correct inforamtions", 400)
+          new ErrorHandler("Please provide the correct information", 400)
         );
       }
+
+      console.log('Login successful');
       sendToken(user, 201, res);
     } catch (error) {
+      console.error('Login error:', error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
@@ -411,12 +470,28 @@ router.post(
   "/verify-otp",
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { email, otp } = req.body;
+      const { email, phoneNumber, otp } = req.body;
 
-      const user = await User.findOne({ email });
+      if (!otp) {
+        return next(new ErrorHandler("Please provide OTP", 400));
+      }
+
+      let user;
+      if (email) {
+        user = await User.findOne({ email });
+      } else if (phoneNumber) {
+        user = await User.findOne({ phoneNumber });
+      } else {
+        return next(new ErrorHandler("Please provide either email or phone number", 400));
+      }
 
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
+      }
+
+      // Prevent admin user login through OTP
+      if (user.role === "Admin") {
+        return next(new ErrorHandler("Admin users cannot login through OTP", 403));
       }
 
       const isValidOTP = user.verifyOTP(otp);
@@ -425,9 +500,32 @@ router.post(
         return next(new ErrorHandler("Invalid or expired OTP", 400));
       }
 
+      // Generate token for successful verification
+      const token = user.getJwtToken();
+
+      // Only return non-sensitive user data
+      const userData = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        avatar: user.avatar,
+        role: user.role,
+        isPhoneVerified: user.isPhoneVerified
+      };
+
+      // Set the token in a cookie
+      res.cookie("token", token, {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production"
+      });
+
       res.status(200).json({
         success: true,
         message: "OTP verified successfully",
+        token,
+        user: userData
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -465,6 +563,44 @@ router.put(
       await user.save();
 
       sendToken(user, 200, res);
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// Send OTP for phone login
+router.post(
+  "/send-otp",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { phoneNumber } = req.body;
+
+      if (!phoneNumber) {
+        return next(new ErrorHandler("Please provide phone number", 400));
+      }
+
+      // Find user by phone number
+      const user = await User.findOne({ phoneNumber });
+
+      if (!user) {
+        return next(new ErrorHandler("No user found with this phone number", 404));
+      }
+
+      // Generate OTP
+      const otp = user.generateOTP();
+      await user.save();
+
+      // TODO: Integrate with SMS service to send OTP
+      // For development, we'll just return the OTP
+      console.log(`OTP for ${phoneNumber}: ${otp}`);
+
+      res.status(200).json({
+        success: true,
+        message: "OTP sent successfully",
+        // Remove this in production
+        otp: process.env.NODE_ENV === "development" ? otp : undefined
+      });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
