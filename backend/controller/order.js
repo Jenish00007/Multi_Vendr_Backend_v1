@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ErrorHandler = require("../utils/ErrorHandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
-const { isAuthenticated, isSeller, isAdmin } = require("../middleware/auth");
+const { isAuthenticated, isSeller, isAdmin, isDeliveryMan } = require("../middleware/auth");
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
@@ -350,6 +350,243 @@ router.get(
       });
     } catch (error) {
       console.error("Error in get-order-by-id:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// get order by id for deliveryman
+router.get(
+  "/deliveryman/get-order/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      console.log("Deliveryman fetching order with ID:", req.params.id);
+      console.log("Deliveryman ID:", req.deliveryMan._id);
+
+      const order = await Order.findById(req.params.id)
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name address phone'
+        })
+        .populate('user', 'name phone');
+
+      console.log("Found order:", order ? "Yes" : "No");
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      // Format the order data for deliveryman view
+      const formattedOrder = {
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+          _id: item._id,
+          name: item.name || item.product?.name || "Product not found",
+          quantity: item.quantity,
+          price: item.price,
+          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
+          shopName: item.shopId?.name || "Shop not found",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        deliveredAt: order.deliveredAt,
+        paidAt: order.paidAt,
+        otp: order.otp || null,
+        delivery_instruction: order.delivery_instruction || '',
+        delivery_man: order.delivery_man || null,
+        store: {
+          name: order.cart[0]?.shopId?.name || "Store Name",
+          address: order.cart[0]?.shopId?.address || "Store Address",
+          phone: order.cart[0]?.shopId?.phone || "Store Phone"
+        },
+        user: {
+          name: order.user?.name || "Customer Name",
+          phone: order.user?.phone || "Customer Phone"
+        }
+      };
+
+      console.log("Sending formatted order response to deliveryman");
+
+      res.status(200).json({
+        success: true,
+        order: formattedOrder,
+      });
+    } catch (error) {
+      console.error("Error in deliveryman get-order-by-id:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// get deliveryman order history
+router.get(
+  "/deliveryman/order-history",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      console.log("Fetching order history for deliveryman:", req.deliveryMan._id);
+
+      const orders = await Order.find({ delivery_man: req.deliveryMan._id })
+        .sort({ createdAt: -1 })
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name address phone'
+        })
+        .populate('user', 'name phone');
+
+      console.log("Found orders:", orders.length);
+
+      const formattedOrders = orders.map(order => ({
+        id: order._id,
+        order_number: order._id.toString().slice(-6).toUpperCase(),
+        order_items_count: order.cart.reduce((total, item) => total + item.quantity, 0),
+        created_at: new Date(order.createdAt).toLocaleString(),
+        status: order.status,
+        total_price: order.totalPrice,
+        store: {
+          name: order.cart[0]?.shopId?.name || "Store Name",
+          address: order.cart[0]?.shopId?.address || "Store Address"
+        },
+        customer: {
+          name: order.user?.name || "Customer Name",
+          address: order.shippingAddress?.address || "Customer Address"
+        },
+        payment_type: order.paymentInfo?.type || "COD",
+        delivery_instruction: order.delivery_instruction || "",
+        otp: order.otp || null
+      }));
+
+      res.status(200).json({
+        success: true,
+        orders: formattedOrders
+      });
+    } catch (error) {
+      console.error("Error in deliveryman order history:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// accept order by deliveryman
+router.put(
+  "/deliveryman/accept-order/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      console.log("Deliveryman accepting order:", req.params.id);
+      console.log("Deliveryman ID:", req.deliveryMan._id);
+      console.log("Request body:", req.body);
+
+      // Validate order ID
+      if (!req.params.id || req.params.id === 'undefined') {
+        console.error("Invalid order ID provided");
+        return next(new ErrorHandler("Invalid order ID", 400));
+      }
+
+      const order = await Order.findById(req.params.id)
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name address phone'
+        })
+        .populate('user', 'name phone');
+
+      console.log("Found order:", order ? "Yes" : "No");
+
+      if (!order) {
+        console.error("Order not found with ID:", req.params.id);
+        return next(new ErrorHandler("Order not found", 404));
+      }
+
+      console.log("Current order status:", order.status);
+      console.log("Current delivery_man:", order.delivery_man);
+
+      // Check if order is already assigned to another deliveryman
+      if (order.delivery_man && order.delivery_man.toString() !== req.deliveryMan._id.toString()) {
+        console.error("Order already assigned to another deliveryman");
+        return next(new ErrorHandler("Order is already assigned to another deliveryman", 400));
+      }
+
+      // Check if order is in a valid state to be accepted
+      if (order.status !== "Processing" && order.status !== "Transferred to delivery partner") {
+        console.error("Invalid order status for acceptance:", order.status);
+        return next(new ErrorHandler(`Order cannot be accepted in its current state: ${order.status}`, 400));
+      }
+
+      // Update order with deliveryman details
+      order.delivery_man = req.deliveryMan._id;
+      order.status = "Out for delivery";
+      order.delivery_instruction = req.body.delivery_instruction || order.delivery_instruction;
+
+      console.log("Saving order with updates:", {
+        delivery_man: order.delivery_man,
+        status: order.status,
+        delivery_instruction: order.delivery_instruction
+      });
+
+      await order.save();
+
+      // Format the response
+      const formattedOrder = {
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+          _id: item._id,
+          name: item.name || item.product?.name || "Product not found",
+          quantity: item.quantity,
+          price: item.price,
+          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
+          shopName: item.shopId?.name || "Shop not found",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        deliveredAt: order.deliveredAt,
+        paidAt: order.paidAt,
+        otp: order.otp || null,
+        delivery_instruction: order.delivery_instruction || '',
+        delivery_man: order.delivery_man || null,
+        store: {
+          name: order.cart[0]?.shopId?.name || "Store Name",
+          address: order.cart[0]?.shopId?.address || "Store Address",
+          phone: order.cart[0]?.shopId?.phone || "Store Phone"
+        },
+        user: {
+          name: order.user?.name || "Customer Name",
+          phone: order.user?.phone || "Customer Phone"
+        }
+      };
+
+      console.log("Sending successful response");
+      res.status(200).json({
+        success: true,
+        message: "Order accepted successfully",
+        order: formattedOrder
+      });
+    } catch (error) {
+      console.error("Detailed error in accepting order:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       return next(new ErrorHandler(error.message, 500));
     }
   })
