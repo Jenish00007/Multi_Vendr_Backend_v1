@@ -3,6 +3,7 @@ const catchAsyncErrors = require("./catchAsyncErrors");
 const jwt = require("jsonwebtoken");
 const User = require("../model/user");
 const Shop = require("../model/shop");
+const DeliveryMan = require("../model/deliveryman");
 
 // Check if user is authenticated or not
 exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
@@ -73,6 +74,36 @@ exports.isAdmin = (...roles) => {
     next();
   };
 };
+
+exports.isDeliveryMan = catchAsyncErrors(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next(new ErrorHandler("Please login to continue", 401));
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return next(new ErrorHandler("Please login to continue", 401));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const deliveryMan = await DeliveryMan.findById(decoded.id);
+    
+    if (!deliveryMan) {
+      return next(new ErrorHandler("Delivery man not found", 404));
+    }
+
+    if (!deliveryMan.isApproved) {
+      return next(new ErrorHandler("Your account is pending approval", 403));
+    }
+
+    req.deliveryMan = deliveryMan;
+    next();
+  } catch (error) {
+    return next(new ErrorHandler("Invalid token", 401));
+  }
+});
 
 // Why this auth?
 // This auth is for the user to login and get the token
