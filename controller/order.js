@@ -483,7 +483,7 @@ router.get(
 
 // accept order by deliveryman
 router.put(
-  "/deliveryman/accept-order/0:id",
+  "/deliveryman/accept-order/:id",
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
@@ -525,14 +525,14 @@ router.put(
       }
 
       // Check if order is in a valid state to be accepted
-      if (order.status !== "Processing" && order.status !== "Transferred to delivery partner") {
+      if (order.status !== "Out for delivery" && order.status !== "Processing") {
         console.error("Invalid order status for acceptance:", order.status);
         return next(new ErrorHandler(`Order cannot be accepted in its current state: ${order.status}`, 400));
       }
 
       // Update order with deliveryman details
       order.delivery_man = req.deliveryMan._id;
-      order.status = "Out for delivery";
+      order.status = "Shipping";
       order.delivery_instruction = req.body.delivery_instruction || order.delivery_instruction;
 
       console.log("Saving order with updates:", {
@@ -542,6 +542,8 @@ router.put(
       });
 
       await order.save({ validateBeforeSave: false });
+
+      console.log("Order saved after acceptance. Delivery Man ID:", order.delivery_man);
 
       // Format the response
       const formattedOrder = {
@@ -614,7 +616,7 @@ router.put(
       }
 
       // Check if order is in a valid state to be ignored
-      if (order.status !== "Processing" && order.status !== "Transferred to delivery partner") {
+      if (order.status !== "Out for delivery" && order.status !== "Processing") {
         return next(new ErrorHandler(`Order cannot be ignored in its current state: ${order.status}`, 400));
       }
 
