@@ -483,7 +483,7 @@ router.get(
 
 // accept order by deliveryman
 router.put(
-  "/deliveryman/accept-order/:id",
+  "/deliveryman/accept-order/0:id",
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
@@ -639,6 +639,45 @@ router.put(
       });
     } catch (error) {
       console.error("Error in ignoring order:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// confirm order delivery by deliveryman with OTP
+router.put(
+  "/deliveryman/confirm-delivery/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { otp } = req.body;
+      const order = await Order.findById(req.params.id);
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      if (order.status !== "Out for delivery") {
+        return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}`, 400));
+      }
+
+      // OTP verification
+      if (!order.otp || order.otp !== otp) {
+        return next(new ErrorHandler("Invalid OTP", 400));
+      }
+
+      order.status = "Delivered";
+      order.deliveredAt = Date.now();
+
+      await order.save({ validateBeforeSave: false });
+
+      res.status(200).json({
+        success: true,
+        message: "Order delivered successfully",
+        order,
+      });
+    } catch (error) {
+      console.error("Error in confirm-delivery:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
