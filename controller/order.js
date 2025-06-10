@@ -541,7 +541,7 @@ router.put(
         delivery_instruction: order.delivery_instruction
       });
 
-      await order.save();
+      await order.save({ validateBeforeSave: false });
 
       // Format the response
       const formattedOrder = {
