@@ -33,6 +33,15 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: [true, "Please enter your product stock!"],
   },
+  unit: {
+    type: String,
+    enum: ['kg', 'pcs', 'lr', 'Pack'],
+    required: [true, "Please select a unit!"],
+  },
+  maxPurchaseQuantity: {
+    type: Number,
+    required: [true, "Please enter maximum purchase quantity!"],
+  },
   images: [
     {
       type: String,
