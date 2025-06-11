@@ -56,6 +56,7 @@ router.post(
           totalPrice,
           paymentInfo,
           otp, // Save OTP in the order
+          shop: shopId, // Add the shopId here
         });
         orders.push(order);
       }
@@ -587,6 +588,57 @@ router.put(
         stack: error.stack,
         name: error.name
       });
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// ignore order by deliveryman
+router.put(
+  "/deliveryman/ignore-order/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      console.log("Deliveryman ignoring order:", req.params.id);
+      console.log("Deliveryman ID:", req.deliveryMan._id);
+
+      const order = await Order.findById(req.params.id);
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      // Check if order is already assigned
+      if (order.delivery_man) {
+        return next(new ErrorHandler("Order is already assigned to a deliveryman", 400));
+      }
+
+      // Check if order is in a valid state to be ignored
+      if (order.status !== "Processing" && order.status !== "Transferred to delivery partner") {
+        return next(new ErrorHandler(`Order cannot be ignored in its current state: ${order.status}`, 400));
+      }
+
+      // Add deliveryman to ignored_by array if it doesn't exist
+      if (!order.ignored_by) {
+        order.ignored_by = [];
+      }
+
+      // Check if deliveryman has already ignored this order
+      if (order.ignored_by.includes(req.deliveryMan._id)) {
+        return next(new ErrorHandler("You have already ignored this order", 400));
+      }
+
+      // Add deliveryman to ignored_by array
+      order.ignored_by.push(req.deliveryMan._id);
+
+      await order.save({ validateBeforeSave: false });
+
+      res.status(200).json({
+        success: true,
+        message: "Order ignored successfully"
+      });
+    } catch (error) {
+      console.error("Error in ignoring order:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
