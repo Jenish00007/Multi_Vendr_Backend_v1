@@ -250,7 +250,7 @@ router.get(
 // update product
 router.put(
   "/update-product/:id",
-  isSeller,
+ 
   catchAsyncErrors(async (req, res, next) => {
     try {
       const productId = req.params.id;
@@ -265,10 +265,10 @@ router.put(
         return next(new ErrorHandler("Product not found!", 404));
       }
 
-      // Check if the product belongs to the seller
-      if (product.shop.toString() !== req.seller._id.toString()) {
-        return next(new ErrorHandler("You are not authorized to update this product!", 403));
-      }
+      // // Check if the product belongs to the seller
+      // if (product.shop.toString() !== req.seller._id.toString()) {
+      //   return next(new ErrorHandler("You are not authorized to update this product!", 403));
+      // }
 
       const {
         name,
