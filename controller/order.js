@@ -296,16 +296,20 @@ router.get(
       console.log("Authenticated user ID:", req.user._id);
 
       const order = await Order.findById(req.params.id)
+        .populate('deliveryMan')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
         })
         .populate({
           path: 'cart.shopId',
-          select: 'name'
-        });
+          select: 'name address phone'
+        })
+        .populate('user', 'name phone');
 
       console.log("Found order:", order ? "Yes" : "No");
+      console.log("Order deliveryMan (in get-order):", order?.deliveryMan);
+      console.log("Deliveryman ID from request (in get-order):", req.deliveryMan._id);
 
       if (!order) {
         return next(new ErrorHandler("Order not found with this id", 404));
@@ -339,7 +343,7 @@ router.get(
         paidAt: order.paidAt,
         otp: order.otp || null,
         delivery_instruction: order.delivery_instruction || '',
-        delivery_man: order.delivery_man || null,
+        deliveryMan: order.deliveryMan || null,
         store: order.store || null
       };
 
@@ -366,6 +370,7 @@ router.get(
       console.log("Deliveryman ID:", req.deliveryMan._id);
 
       const order = await Order.findById(req.params.id)
+        .populate('deliveryMan')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -388,8 +393,8 @@ router.get(
         status: order.status,
         totalPrice: order.totalPrice,
         createdAt: order.createdAt,
-        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
-        items: order.cart.map((item) => ({
+        itemsQty: (order.cart || []).reduce((total, item) => total + item.quantity, 0),
+        items: (order.cart || []).map((item) => ({
           _id: item._id,
           name: item.name || item.product?.name || "Product not found",
           quantity: item.quantity,
@@ -403,19 +408,22 @@ router.get(
         paidAt: order.paidAt,
         otp: order.otp || null,
         delivery_instruction: order.delivery_instruction || '',
-        delivery_man: order.delivery_man || null,
+        deliveryMan: order.deliveryMan || null,
         store: {
           name: order.cart[0]?.shopId?.name || "Store Name",
           address: order.cart[0]?.shopId?.address || "Store Address",
-          phone: order.cart[0]?.shopId?.phone || "Store Phone"
+          phone: order.cart[0]?.shopId?.phone || "Store Phone",
         },
         user: {
           name: order.user?.name || "Customer Name",
-          phone: order.user?.phone || "Customer Phone"
-        }
+          phone: order.user?.phone || "Customer Phone",
+        },
       };
 
       console.log("Sending formatted order response to deliveryman");
+      console.log("Formatted order deliveryMan:", formattedOrder.deliveryMan);
+      console.log("Formatted order items:", formattedOrder.items);
+      console.log("Formatted order itemsQty:", formattedOrder.itemsQty);
 
       res.status(200).json({
         success: true,
@@ -434,10 +442,15 @@ router.get(
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      console.log("Fetching order history for deliveryman:", req.deliveryMan._id);
+      const deliveryManId = req.deliveryMan._id;
+      console.log("Fetching order history for deliveryman:", deliveryManId);
 
-      const orders = await Order.find({ delivery_man: req.deliveryMan._id })
+      const orders = await Order.find({ 
+        deliveryMan: deliveryManId,
+        status: { $in: ["Delivered", "Shipping"] }
+      })
         .sort({ createdAt: -1 })
+        .populate('deliveryMan')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -449,6 +462,8 @@ router.get(
         .populate('user', 'name phone');
 
       console.log("Found orders:", orders.length);
+      console.log("Order statuses:", orders.map(o => o.status));
+      console.log("Delivery man IDs:", orders.map(o => o.deliveryMan?._id));
 
       const formattedOrders = orders.map(order => ({
         id: order._id,
@@ -498,6 +513,7 @@ router.put(
       }
 
       const order = await Order.findById(req.params.id)
+        .populate('deliveryMan')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -516,10 +532,10 @@ router.put(
       }
 
       console.log("Current order status:", order.status);
-      console.log("Current delivery_man:", order.delivery_man);
+      console.log("Current deliveryMan:", order.deliveryMan);
 
       // Check if order is already assigned to another deliveryman
-      if (order.delivery_man && order.delivery_man.toString() !== req.deliveryMan._id.toString()) {
+      if (order.deliveryMan && order.deliveryMan.toString() !== req.deliveryMan._id.toString()) {
         console.error("Order already assigned to another deliveryman");
         return next(new ErrorHandler("Order is already assigned to another deliveryman", 400));
       }
@@ -531,26 +547,44 @@ router.put(
       }
 
       // Update order with deliveryman details
-      order.delivery_man = req.deliveryMan._id;
-      order.status = "Out for delivery";
-      order.delivery_instruction = req.body.delivery_instruction || order.delivery_instruction;
+      console.log("Before update - Order deliveryMan:", order.deliveryMan);
+      console.log("Setting deliveryMan to:", req.deliveryMan._id);
+      
+      // Use findByIdAndUpdate to ensure atomic update
+      const updatedOrder = await Order.findByIdAndUpdate(
+        order._id,
+        {
+          $set: {
+            deliveryMan: req.deliveryMan._id,
+            status: "Out for delivery",
+            delivery_instruction: req.body.delivery_instruction || order.delivery_instruction
+          }
+        },
+        { 
+          new: true,
+          runValidators: false
+        }
+      ).populate('deliveryMan')
+       .populate({
+         path: 'cart.product',
+         select: 'name images price discountPrice'
+       })
+       .populate({
+         path: 'cart.shopId',
+         select: 'name address phone'
+       })
+       .populate('user', 'name phone');
 
-      console.log("Saving order with updates:", {
-        delivery_man: order.delivery_man,
-        status: order.status,
-        delivery_instruction: order.delivery_instruction
-      });
-
-      await order.save();
+      console.log("After update - Order deliveryMan:", updatedOrder.deliveryMan);
 
       // Format the response
       const formattedOrder = {
-        _id: order._id,
-        status: order.status,
-        totalPrice: order.totalPrice,
-        createdAt: order.createdAt,
-        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
-        items: order.cart.map((item) => ({
+        _id: updatedOrder._id,
+        status: updatedOrder.status,
+        totalPrice: updatedOrder.totalPrice,
+        createdAt: updatedOrder.createdAt,
+        itemsQty: updatedOrder.cart.reduce((total, item) => total + item.quantity, 0),
+        items: updatedOrder.cart.map((item) => ({
           _id: item._id,
           name: item.name || item.product?.name || "Product not found",
           quantity: item.quantity,
@@ -558,21 +592,21 @@ router.put(
           image: item.images?.[0] || item.product?.images?.[0]?.url || "",
           shopName: item.shopId?.name || "Shop not found",
         })),
-        shippingAddress: order.shippingAddress,
-        paymentInfo: order.paymentInfo,
-        deliveredAt: order.deliveredAt,
-        paidAt: order.paidAt,
-        otp: order.otp || null,
-        delivery_instruction: order.delivery_instruction || '',
-        delivery_man: order.delivery_man || null,
+        shippingAddress: updatedOrder.shippingAddress,
+        paymentInfo: updatedOrder.paymentInfo,
+        deliveredAt: updatedOrder.deliveredAt,
+        paidAt: updatedOrder.paidAt,
+        otp: updatedOrder.otp || null,
+        delivery_instruction: updatedOrder.delivery_instruction || '',
+        deliveryMan: updatedOrder.deliveryMan || null,
         store: {
-          name: order.cart[0]?.shopId?.name || "Store Name",
-          address: order.cart[0]?.shopId?.address || "Store Address",
-          phone: order.cart[0]?.shopId?.phone || "Store Phone"
+          name: updatedOrder.cart[0]?.shopId?.name || "Store Name",
+          address: updatedOrder.cart[0]?.shopId?.address || "Store Address",
+          phone: updatedOrder.cart[0]?.shopId?.phone || "Store Phone"
         },
         user: {
-          name: order.user?.name || "Customer Name",
-          phone: order.user?.phone || "Customer Phone"
+          name: updatedOrder.user?.name || "Customer Name",
+          phone: updatedOrder.user?.phone || "Customer Phone"
         }
       };
 
@@ -593,6 +627,7 @@ router.put(
   })
 );
 
+
 // ignore order by deliveryman
 router.put(
   "/deliveryman/ignore-order/:id",
@@ -609,12 +644,12 @@ router.put(
       }
 
       // Check if order is already assigned
-      if (order.delivery_man) {
+      if (order.deliveryMan) {
         return next(new ErrorHandler("Order is already assigned to a deliveryman", 400));
       }
 
       // Check if order is in a valid state to be ignored
-      if (order.status !== "Processing" && order.status !== "Transferred to delivery partner") {
+      if (order.status !== "Out for delivery" && order.status !== "Processing") {
         return next(new ErrorHandler(`Order cannot be ignored in its current state: ${order.status}`, 400));
       }
 
@@ -639,6 +674,90 @@ router.put(
       });
     } catch (error) {
       console.error("Error in ignoring order:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// confirm order delivery by deliveryman with OTP
+router.put(
+  "/deliveryman/confirm-delivery/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { otp } = req.body;
+      console.log("Confirming delivery for order:", req.params.id);
+      console.log("DeliveryMan ID:", req.deliveryMan._id);
+      console.log("OTP provided:", otp);
+
+      const order = await Order.findById(req.params.id)
+        .populate('deliveryMan')
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name address phone'
+        })
+        .populate('user', 'name phone');
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      console.log("Found order:", order ? "Yes" : "No");
+      console.log("Order deliveryMan (after populate):", order.deliveryMan);
+      console.log("Order status:", order.status);
+      console.log("Order OTP:", order.otp);
+
+      // Verify this delivery man is assigned to the order
+      if (!order.deliveryMan || order.deliveryMan._id.toString() !== req.deliveryMan._id.toString()) {
+        console.error("Delivery man mismatch (during check):");
+        console.error("  orderDeliveryMan._id:", order.deliveryMan?._id);
+        console.error("  requestDeliveryMan._id:", req.deliveryMan._id);
+        return next(new ErrorHandler("You are not authorized to deliver this order", 403));
+      }
+
+      if (order.status !== "Out for delivery") {
+        console.error("Invalid order status:", order.status);
+        return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}`, 400));
+      }
+
+      // OTP verification
+      if (!order.otp || order.otp !== otp) {
+        console.error("OTP mismatch:", {
+          providedOTP: otp,
+          storedOTP: order.otp
+        });
+        return next(new ErrorHandler("Invalid OTP", 400));
+      }
+
+      // Ensure deliveryMan field is preserved
+      order.status = "Delivered";
+      order.deliveredAt = Date.now();
+      order.deliveryMan = req.deliveryMan._id; // Explicitly set deliveryMan again
+
+      console.log("Saving order with updates:", {
+        status: order.status,
+        deliveredAt: order.deliveredAt,
+        deliveryMan: order.deliveryMan
+      });
+
+      await order.save({ validateBeforeSave: false });
+
+      // Verify the save
+      const savedOrder = await Order.findById(order._id);
+      console.log("After save - Order status:", savedOrder.status);
+      console.log("After save - Order deliveryMan:", savedOrder.deliveryMan);
+
+      res.status(200).json({
+        success: true,
+        message: "Order delivered successfully",
+        order: savedOrder,
+      });
+    } catch (error) {
+      console.error("Error in confirm-delivery:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
