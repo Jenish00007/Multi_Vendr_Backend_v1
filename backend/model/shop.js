@@ -70,7 +70,7 @@ const shopSchema = new mongoose.Schema({
       },
       status: {
         type: String,
-        default: "Out for delivery",
+        default: "Processing",
       },
       createdAt: {
         type: Date,
