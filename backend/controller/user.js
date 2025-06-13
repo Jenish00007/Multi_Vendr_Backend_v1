@@ -607,4 +607,36 @@ router.post(
   })
 );
 
+// login admin
+router.post(
+  "/login-admin",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return next(new ErrorHandler("Please provide email and password", 400));
+      }
+
+      // Find admin user
+      const user = await User.findOne({ email: email.toLowerCase().trim(), role: "Admin" }).select("+password");
+
+      if (!user) {
+        return next(new ErrorHandler("Invalid admin credentials", 401));
+      }
+
+      // compare password
+      const isPasswordValid = await user.comparePassword(password);
+
+      if (!isPasswordValid) {
+        return next(new ErrorHandler("Invalid admin credentials", 401));
+      }
+
+      sendToken(user, 201, res);
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 module.exports = router;
