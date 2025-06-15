@@ -559,4 +559,18 @@ exports.verifyToken = async (req, res) => {
             message: "Internal server error"
         });
     }
-}; 
+};
+
+// Get single delivery man details for preview (Admin)
+exports.getDeliveryManPreview = catchAsyncErrors(async (req, res, next) => {
+    const deliveryMan = await DeliveryMan.findById(req.params.id);
+
+    if (!deliveryMan) {
+        return next(new ErrorHandler("Delivery man not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        deliveryMan,
+    });
+}); 

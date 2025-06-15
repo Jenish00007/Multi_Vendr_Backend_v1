@@ -19,20 +19,10 @@ exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    
-    // Check if the token is for an admin user
-    if (decoded.role === "Admin") {
-      return next(new ErrorHandler("Admin users cannot access this resource", 403));
-    }
-
     const user = await User.findById(decoded.id);
+    
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
-    }
-
-    // Double check the user's role
-    if (user.role === "Admin") {
-      return next(new ErrorHandler("Admin users cannot access this resource", 403));
     }
 
     req.user = user;
@@ -66,9 +56,13 @@ exports.isSeller = catchAsyncErrors(async (req, res, next) => {
 
 exports.isAdmin = (...roles) => {
   return (req, res, next) => {
+    if (!req.user) {
+      return next(new ErrorHandler("Please login to continue", 401));
+    }
+
     if (!roles.includes(req.user.role)) {
       return next(
-        new ErrorHandler(`${req.user.role} can not access this resources!`)
+        new ErrorHandler(`${req.user.role} can not access this resources!`, 403)
       );
     }
     next();

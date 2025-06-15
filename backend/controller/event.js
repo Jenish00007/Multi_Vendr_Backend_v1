@@ -9,6 +9,11 @@ const { isSeller, isAdmin, isAuthenticated } = require("../middleware/auth");
 const router = express.Router();
 const fs = require("fs");
 
+// Helper function to get S3 URL
+const getS3Url = (filename) => {
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+};
+
 // create event
 router.post(
   "/create-event",
@@ -21,21 +26,68 @@ router.post(
         return next(new ErrorHandler("Shop Id is invalid!", 400));
       } else {
         const files = req.files;
-        const imageUrls = files.map((file) => `${file.filename}`);
+        const imageUrls = files.map((file) => ({
+          url: getS3Url(file.key),
+          key: file.key
+        }));
 
         const eventData = req.body;
         eventData.images = imageUrls;
         eventData.shop = shop;
 
-        const product = await Event.create(eventData);
+        const event = await Event.create(eventData);
 
         res.status(201).json({
           success: true,
-          product,
+          event,
         });
       }
     } catch (error) {
       return next(new ErrorHandler(error, 400));
+    }
+  })
+);
+
+// create event by admin
+router.post(
+  "/admin-create-event",
+  isAuthenticated,
+  isAdmin("Admin"),
+  upload.array("images"),
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return next(new ErrorHandler("Please upload at least one image", 400));
+      }
+
+      const files = req.files;
+      const imageUrls = files.map((file) => ({
+        url: getS3Url(file.key),
+        key: file.key
+      }));
+
+      const eventData = req.body;
+      eventData.images = imageUrls;
+      eventData.isAdminEvent = true;
+
+      // Validate required fields
+      const requiredFields = ['name', 'description', 'category', 'originalPrice', 'discountPrice', 'stock', 'start_Date', 'Finish_Date'];
+      for (const field of requiredFields) {
+        if (!eventData[field]) {
+          return next(new ErrorHandler(`Please provide ${field}`, 400));
+        }
+      }
+
+      const event = await Event.create(eventData);
+
+      res.status(201).json({
+        success: true,
+        event,
+      });
+    } catch (error) {
+      // Log the error for debugging
+      console.error('Error creating event:', error);
+      return next(new ErrorHandler(error.message, 400));
     }
   })
 );
@@ -81,7 +133,7 @@ router.delete(
       const eventData = await Event.findById(productId);
 
       eventData.images.forEach((imageUrl) => {
-        const filename = imageUrl;
+        const filename = imageUrl.key;
         const filePath = `uploads/${filename}`;
 
         fs.unlink(filePath, (err) => {
@@ -114,9 +166,11 @@ router.get(
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const events = await Event.find().sort({
-        createdAt: -1,
-      });
+      const events = await Event.find()
+        .populate('category', 'name')
+        .sort({
+          createdAt: -1,
+        });
       res.status(201).json({
         success: true,
         events,

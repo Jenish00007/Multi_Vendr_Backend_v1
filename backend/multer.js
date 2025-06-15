@@ -35,12 +35,14 @@ const UPLOAD_FOLDERS = {
 
   // Event related
   EVENT_BANNER: 'events/banners',
+  EVENT_IMAGES: 'events/images',
 };
 
 // Map fieldnames to their respective folders
 const FOLDER_MAPPING = {
   // Shop related
   'images': UPLOAD_FOLDERS.PRODUCTS,
+  'eventImages': UPLOAD_FOLDERS.EVENT_IMAGES,
   'banner': UPLOAD_FOLDERS.BANNERS,
   'shopAvatar': UPLOAD_FOLDERS.SHOP_AVATAR,
   'shopBanner': UPLOAD_FOLDERS.SHOP_BANNER,

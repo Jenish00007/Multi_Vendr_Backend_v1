@@ -34,11 +34,11 @@ router.put("/update-profile", isDeliveryMan, updateDeliveryManProfile);
 router.put("/update-password", isDeliveryMan, updateDeliveryManPassword);
 
 // Admin routes
-router.get("/all", isAuthenticated, isAdmin, getAllDeliveryMen);
-router.put("/approve/:id", isAuthenticated, isAdmin, approveDeliveryMan);
-router.delete("/reject/:id", isAuthenticated, isAdmin, rejectDeliveryMan);
-router.put("/edit/:id", isAuthenticated, isAdmin, upload.single("idProof"), editDeliveryMan);
-router.delete("/delete/:id", isAuthenticated, isAdmin, deleteDeliveryMan);
+router.get("/all", isAuthenticated, getAllDeliveryMen);
+router.put("/approve/:id", isAuthenticated,  approveDeliveryMan);
+router.delete("/reject/:id", isAuthenticated,  rejectDeliveryMan);
+router.put("/edit/:id", isAuthenticated, upload.single("idProof"), editDeliveryMan);
+router.delete("/delete/:id", isAuthenticated,  deleteDeliveryMan);
 
 // Verify token route
 router.get('/verify-token', verifyToken);
