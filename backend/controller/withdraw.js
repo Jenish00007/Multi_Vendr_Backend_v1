@@ -13,21 +13,21 @@ router.post(
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { amount } = req.body;
+      const { amount, bankName, bankAccountNumber, bankIfscCode } = req.body;
 
       const data = {
-        seller: req.seller,
+        seller: req.seller._id,
         amount,
+        bankName,
+        bankAccountNumber,
+        bankIfscCode,
       };
 
       try {
-        await sendMail({
+        await sendEmail({
           email: req.seller.email,
           subject: "Withdraw Request",
           message: `Hello ${req.seller.name}, Your withdraw request of ${amount}$ is processing. It will take 3days to 7days to processing! `,
-        });
-        res.status(201).json({
-          success: true,
         });
       } catch (error) {
         return next(new ErrorHandler(error.message, 500));
@@ -59,7 +59,7 @@ router.get(
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const withdraws = await Withdraw.find().sort({ createdAt: -1 });
+      const withdraws = await Withdraw.find().sort({ createdAt: -1 }).populate("seller");
 
       res.status(201).json({
         success: true,
@@ -80,16 +80,31 @@ router.put(
     try {
       const { sellerId } = req.body;
 
-      const withdraw = await Withdraw.findByIdAndUpdate(
-        req.params.id,
-        {
-          status: "succeed",
-          updatedAt: Date.now(),
-        },
-        { new: true }
-      );
+      if (!sellerId) {
+        return next(new ErrorHandler("Seller ID is required", 400));
+      }
 
-      const seller = await Shop.findById(sellerId);
+      const withdraw = await Withdraw.findById(req.params.id);
+      
+      if (!withdraw) {
+        return next(new ErrorHandler("Withdrawal request not found", 404));
+      }
+
+      if (withdraw.status === "succeed") {
+        return next(new ErrorHandler("This withdrawal request has already been processed", 400));
+      }
+
+      withdraw.status = "Succeed";
+      withdraw.updatedAt = Date.now();
+      withdraw.transactionId = `TRX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      await withdraw.save();
+
+      const shop = await Shop.findById(sellerId);
+      
+      if (!shop) {
+        return next(new ErrorHandler("Seller not found", 404));
+      }
 
       const transection = {
         _id: withdraw._id,
@@ -98,20 +113,21 @@ router.put(
         status: withdraw.status,
       };
 
-      seller.transections = [...seller.transections, transection];
-
-      await seller.save();
+      shop.transections = [...shop.transections, transection];
+      await shop.save();
 
       try {
-        await sendMail({
-          email: seller.email,
-          subject: "Payment confirmation",
-          message: `Hello ${seller.name}, Your withdraw request of ${withdraw.amount}$ is on the way. Delivery time depends on your bank's rules it usually takes 3days to 7days.`,
+        await sendEmail({
+          email: shop.email,
+          subject: "Withdraw Request Approved",
+          message: `Hello ${shop.name}, Your withdraw request of ${withdraw.amount}$ has been approved. Transaction ID: ${withdraw.transactionId}`,
         });
       } catch (error) {
-        return next(new ErrorHandler(error.message, 500));
+        console.error("Error sending email:", error);
+        // Don't return error here, continue with the response
       }
-      res.status(201).json({
+
+      res.status(200).json({
         success: true,
         withdraw,
       });

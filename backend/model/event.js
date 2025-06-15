@@ -10,7 +10,8 @@ const eventSchema = new mongoose.Schema({
     required: [true, "Please enter your event product description!"],
   },
   category: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
     required: [true, "Please enter your event product category!"],
   },
   start_Date: {
@@ -41,8 +42,15 @@ const eventSchema = new mongoose.Schema({
   },
   images: [
     {
-      type: String,
-    },
+      url: {
+        type: String,
+        required: true
+      },
+      key: {
+        type: String,
+        required: true
+      }
+    }
   ],
   reviews: [
     {
@@ -69,11 +77,19 @@ const eventSchema = new mongoose.Schema({
   },
   shopId: {
     type: String,
-    required: true,
+    required: function() {
+      return !this.isAdminEvent;
+    },
   },
   shop: {
     type: Object,
-    required: true,
+    required: function() {
+      return !this.isAdminEvent;
+    },
+  },
+  isAdminEvent: {
+    type: Boolean,
+    default: false,
   },
   sold_out: {
     type: Number,

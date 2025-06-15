@@ -7,6 +7,7 @@ const User = require("../model/user");
 const Shop = require("../model/shop");
 const Order = require("../model/order");
 const Product = require("../model/product");
+const { getDeliveryManPreview } = require("../controller/deliveryman");
 
 // Get dashboard stats
 router.get("/dashboard-stats", isAuthenticated, isAdmin("Admin"), catchAsyncErrors(async (req, res, next) => {
@@ -62,6 +63,8 @@ router.get("/products", isAuthenticated, isAdmin("Admin"), catchAsyncErrors(asyn
   try {
     const products = await Product.find()
       .populate("shop", "name")
+      .populate("category", "name")
+      .populate("subcategory", "name")
       .sort({ createdAt: -1 });
     
     res.status(200).json({
@@ -92,5 +95,8 @@ router.delete("/product/:id", isAuthenticated, isAdmin("Admin"), catchAsyncError
     return next(new ErrorHandler(error.message, 500));
   }
 }));
+
+// Get delivery man preview
+router.get("/delivery-man/:id", isAuthenticated, isAdmin("Admin"), catchAsyncErrors(getDeliveryManPreview));
 
 module.exports = router; 
