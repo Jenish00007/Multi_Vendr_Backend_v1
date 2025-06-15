@@ -13,6 +13,29 @@ const withdrawSchema = new mongoose.Schema({
     type: String,
     default: "Processing",
   },
+  bankName: {
+    type: String,
+    required: true,
+  },
+  bankAccountNumber: {
+    type: String,
+    required: true,
+  },
+  bankIfscCode: {
+    type: String,
+    required: true,
+  },
+  transactionId: {
+    type: String,
+  },
+  paymentMethod: {
+    type: String,
+    default: "Bank Transfer",
+  },
+  processingFee: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now(),

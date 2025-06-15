@@ -185,30 +185,26 @@ router.put(
   isAuthenticated,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { email, password, phoneNumber, name } = req.body;
+      const { email, phoneNumber, name, address } = req.body;
 
-      /* The line `const user = await User.findOne({ email }).select("+password");` is querying the database
-to find a user with the specified email address. The `select("+password")` part is used to include
-the password field in the returned user object. By default, the password field is not selected when
-querying the database for security reasons. However, in this case, the password field is needed to
-compare the provided password with the stored password for authentication purposes. */
-      const user = await User.findOne({ email }).select("+password");
+      const user = await User.findById(req.user.id);
 
       if (!user) {
         return next(new ErrorHandler("User not found", 400));
       }
 
-      const isPasswordValid = await user.comparePassword(password);
-
-      if (!isPasswordValid) {
-        return next(
-          new ErrorHandler("Please provide the correct information", 400)
-        );
+      // Check if email is being changed and if it's already taken
+      if (email !== user.email) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists) {
+          return next(new ErrorHandler("Email already exists", 400));
+        }
       }
 
       user.name = name;
       user.email = email;
       user.phoneNumber = phoneNumber;
+      if (address) user.address = address;
 
       await user.save();
 
@@ -231,18 +227,15 @@ router.put(
     try {
       const existsUser = await User.findById(req.user.id);
 
-      const existAvatarPath = `uploads/${existsUser.avatar}`;
+      // Get the S3 URL from the uploaded file
+      const imageUrl = req.file.location;
 
-      fs.unlinkSync(existAvatarPath); // Delete Priviuse Image
+      if (!imageUrl) {
+        return next(new ErrorHandler("Failed to upload image to S3", 500));
+      }
 
-      const fileUrl = path.join(req.file.filename); // new image
-
-      /* The code `const user = await User.findByIdAndUpdate(req.user.id, { avatar: fileUrl });` is
-        updating the avatar field of the user with the specified `req.user.id`. It uses the
-        `User.findByIdAndUpdate()` method to find the user by their id and update the avatar field
-        with the new `fileUrl` value. The updated user object is then stored in the `user` variable. */
       const user = await User.findByIdAndUpdate(req.user.id, {
-        avatar: fileUrl,
+        avatar: imageUrl,
       });
 
       res.status(200).json({
