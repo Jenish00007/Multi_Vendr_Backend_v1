@@ -43,7 +43,7 @@ exports.addToCart = catchAsyncErrors(async (req, res, next) => {
     // Populate product details
     cartItem = await Cart.findById(cartItem._id).populate({
         path: 'product',
-        select: 'name price originalPrice discountPrice images description stock'
+        select: 'name price originalPrice discountPrice images description stock shopId shop'
     });
 
     // Calculate price details
@@ -123,7 +123,7 @@ exports.getCart = catchAsyncErrors(async (req, res, next) => {
     const cartItems = await Cart.find({ user: userId })
         .populate({
             path: 'product',
-            select: 'name price originalPrice discountPrice images description stock'
+            select: 'name price originalPrice discountPrice images description stock shopId shop'
         });
 
     // Calculate totals
