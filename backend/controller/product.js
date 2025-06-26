@@ -139,14 +139,30 @@ router.get(
   "/get-all-products",
   catchAsyncErrors(async (req, res, next) => {
     try {
+      const { page = 1, limit = 10 } = req.query;
+      
+      // Calculate skip value for pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const limitValue = parseInt(limit);
+
+      // Execute query with sorting and pagination
       const products = await Product.find()
         .populate('category', 'name')
         .populate('subcategory', 'name')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitValue);
+
+      // Get total count for pagination
+      const total = await Product.countDocuments();
 
       res.status(200).json({
         success: true,
         products,
+        total,
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limitValue),
+        hasMore: skip + limitValue < total
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 400));
