@@ -6,6 +6,7 @@ const { isAuthenticated, isSeller, isAdmin, isDeliveryMan } = require("../middle
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
+const { createOrderNotification } = require("../utils/notificationHelper");
 
 // create new order
 router.post(
@@ -160,6 +161,7 @@ router.put(
         });
       }
 
+      const previousStatus = order.status;
       order.status = req.body.status;
 
       if (req.body.status === "Delivered") {
@@ -170,6 +172,45 @@ router.put(
       }
 
       await order.save({ validateBeforeSave: false });
+
+      // Create notification for order status change
+      try {
+        let notificationTitle = "";
+        let notificationDescription = "";
+
+        switch (req.body.status) {
+          case "Processing":
+            notificationTitle = "Order Processing";
+            notificationDescription = `Your order #${order.orderNumber} is now being processed.`;
+            break;
+          case "Transferred to delivery partner":
+            notificationTitle = "Order Out for Delivery";
+            notificationDescription = `Your order #${order.orderNumber} has been transferred to our delivery partner.`;
+            break;
+          case "Delivered":
+            notificationTitle = "Order Delivered";
+            notificationDescription = `Your order #${order.orderNumber} has been successfully delivered!`;
+            break;
+          case "Cancelled":
+            notificationTitle = "Order Cancelled";
+            notificationDescription = `Your order #${order.orderNumber} has been cancelled.`;
+            break;
+          default:
+            notificationTitle = "Order Status Updated";
+            notificationDescription = `Your order #${order.orderNumber} status has been updated to ${req.body.status}.`;
+        }
+
+        await createOrderNotification(
+          order.user,
+          order._id,
+          notificationTitle,
+          notificationDescription,
+          { previousStatus, newStatus: req.body.status }
+        );
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Don't fail the order update if notification fails
+      }
 
       res.status(200).json({
         success: true,
