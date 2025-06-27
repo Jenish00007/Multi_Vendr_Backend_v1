@@ -69,6 +69,7 @@ const message = require("./controller/message");
 const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
 const deliveryman = require("./controller/deliveryman");
+const notification = require("./controller/notification");
 
 // New routes
 const moduleRoutes = require("./routes/moduleRoutes");
@@ -100,6 +101,7 @@ app.use("/v2/product", product);
 app.use("/v2/event", event);
 app.use("/v2/coupon", coupon);
 app.use("/v2/payment", payment);
+app.use("/v2/notification", notification);
 
 // New endpoints
 app.use("/v2/modules", moduleRoutes);
