@@ -403,6 +403,7 @@ exports.getDeliveryManOrders = catchAsyncErrors(async (req, res, next) => {
         status: order.status,
         paymentType: order.paymentType,
         shippingAddress: order.shippingAddress,
+        userLocation: order.userLocation || null,
         deliveryInstructions: order.deliveryInstructions,
         createdAt: order.createdAt
     }));

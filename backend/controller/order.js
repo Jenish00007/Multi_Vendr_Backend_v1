@@ -14,7 +14,7 @@ router.post(
   isAuthenticated,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { cart, shippingAddress, totalPrice, paymentInfo } = req.body;
+      const { cart, shippingAddress, totalPrice, paymentInfo, userLocation } = req.body;
 
       // Get user details from the authenticated token
       const user = {
@@ -23,6 +23,23 @@ router.post(
         email: req.user.email,
         phoneNumber: req.user.phoneNumber
       };
+
+      // Validate userLocation if provided
+      if (userLocation) {
+        if (typeof userLocation.latitude !== 'number' || typeof userLocation.longitude !== 'number') {
+          return next(new ErrorHandler("Invalid location coordinates provided", 400));
+        }
+        
+        // Validate latitude range (-90 to 90)
+        if (userLocation.latitude < -90 || userLocation.latitude > 90) {
+          return next(new ErrorHandler("Invalid latitude value", 400));
+        }
+        
+        // Validate longitude range (-180 to 180)
+        if (userLocation.longitude < -180 || userLocation.longitude > 180) {
+          return next(new ErrorHandler("Invalid longitude value", 400));
+        }
+      }
 
       //   group cart items by shopId
       const shopItemsMap = new Map();
@@ -50,12 +67,16 @@ router.post(
       for (const [shopId, items] of shopItemsMap) {
         // Generate a 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        console.log('Creating order with userLocation:', userLocation);
+        
         const order = await Order.create({
           cart: items,
           shippingAddress,
           user,
           totalPrice,
           paymentInfo,
+          userLocation, // Save user location in the order
           otp, // Save OTP in the order
           shop: shopId, // Add the shopId here
         });
@@ -110,6 +131,7 @@ router.get(
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
       }));
 
       res.status(200).json({
@@ -380,6 +402,7 @@ router.get(
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
         deliveredAt: order.deliveredAt,
         paidAt: order.paidAt,
         otp: order.otp || null,
@@ -445,6 +468,7 @@ router.get(
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
         deliveredAt: order.deliveredAt,
         paidAt: order.paidAt,
         otp: order.otp || null,
@@ -523,7 +547,8 @@ router.get(
         },
         payment_type: order.paymentInfo?.type || "COD",
         delivery_instruction: order.delivery_instruction || "",
-        otp: order.otp || null
+        otp: order.otp || null,
+        userLocation: order.userLocation || null
       }));
 
       res.status(200).json({
@@ -635,6 +660,7 @@ router.put(
         })),
         shippingAddress: updatedOrder.shippingAddress,
         paymentInfo: updatedOrder.paymentInfo,
+        userLocation: updatedOrder.userLocation || null,
         deliveredAt: updatedOrder.deliveredAt,
         paidAt: updatedOrder.paidAt,
         otp: updatedOrder.otp || null,
