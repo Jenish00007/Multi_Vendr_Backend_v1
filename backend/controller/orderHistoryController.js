@@ -41,9 +41,33 @@ exports.getOrderHistory = catchAsyncErrors(async (req, res, next) => {
     // Calculate total pages
     const totalPages = Math.ceil(totalOrders / limit);
 
+    // Format orders to include userLocation
+    const formattedOrders = orders.map(order => ({
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+            _id: item._id,
+            name: item.product?.name || "Product not found",
+            quantity: item.quantity,
+            price: item.price,
+            image: item.product?.images?.[0]?.url || "",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
+        deliveredAt: order.deliveredAt,
+        paidAt: order.paidAt,
+        otp: order.otp || null,
+        delivery_instruction: order.delivery_instruction || '',
+        deliveryMan: order.deliveryMan || null
+    }));
+
     res.status(200).json({
         success: true,
-        orders,
+        orders: formattedOrders,
         pagination: {
             currentPage: page,
             totalPages,
@@ -67,9 +91,33 @@ exports.getOrderDetails = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler('Order not found', 404));
     }
 
+    // Format order to include userLocation
+    const formattedOrder = {
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+            _id: item._id,
+            name: item.product?.name || "Product not found",
+            quantity: item.quantity,
+            price: item.price,
+            image: item.product?.images?.[0]?.url || "",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
+        deliveredAt: order.deliveredAt,
+        paidAt: order.paidAt,
+        otp: order.otp || null,
+        delivery_instruction: order.delivery_instruction || '',
+        deliveryMan: order.deliveryMan || null
+    };
+
     res.status(200).json({
         success: true,
-        order
+        order: formattedOrder
     });
 });
 
