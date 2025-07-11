@@ -35,8 +35,12 @@ const productSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    enum: ['kg', 'pcs', 'lr', 'Pack'],
+    enum: ['kg', 'pcs','g','ml','ltr','pack'],
     required: [true, "Please select a unit!"],
+  },
+  unitCount: {
+    type: Number,
+    required: [true, "Please enter unit count!"],
   },
   maxPurchaseQuantity: {
     type: Number,

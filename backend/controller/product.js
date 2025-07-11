@@ -295,6 +295,9 @@ router.put(
         originalPrice,
         discountPrice,
         stock,
+        unit,
+        unitCount,
+        maxPurchaseQuantity,
         images,
       } = req.body;
 
@@ -338,6 +341,9 @@ router.put(
           originalPrice,
           discountPrice,
           stock,
+          unit,
+          unitCount,
+          maxPurchaseQuantity,
           images,
         },
         { new: true, runValidators: true }
