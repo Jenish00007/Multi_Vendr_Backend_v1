@@ -55,6 +55,43 @@ const shopSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  businessHours: {
+    monday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    },
+    tuesday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    },
+    wednesday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    },
+    thursday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    },
+    friday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    },
+    saturday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    },
+    sunday: {
+      isOpen: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "18:00" }
+    }
+  },
   withdrawMethod: {
     type: Object,
   },

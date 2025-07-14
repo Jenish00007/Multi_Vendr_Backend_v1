@@ -6,7 +6,7 @@ const Order = require('../model/order');
 const Shop = require('../model/shop');
 
 // Connect to MongoDB
-mongoose.connect('mongodb+srv://jebilinjebilin96:Jebilin%402000@cluster0.tdceulr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+mongoose.connect('mongodb+srv://qaudsinfo:Qauds123@cluster0.nyfuhwt.mongodb.net/qauds?retryWrites=true&w=majority&appName=Cluster0', {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });

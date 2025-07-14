@@ -51,8 +51,7 @@ router.post(
   })
 );
 
-// get all withdraws --- admnin
-
+// get all withdraws --- admin
 router.get(
   "/get-all-withdraw-request",
   isAuthenticated,
@@ -64,6 +63,24 @@ router.get(
       res.status(201).json({
         success: true,
         withdraws,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// get seller withdraws --- seller
+router.get(
+  "/get-all-withdraw-request-seller",
+  isSeller,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const withdrawals = await Withdraw.find({ seller: req.seller._id }).sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        withdrawals,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
