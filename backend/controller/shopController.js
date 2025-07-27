@@ -161,3 +161,18 @@ exports.getAllStores = catchAsyncErrors(async (req, res, next) => {
     totalPages: Math.ceil(total / limitValue)
   });
 }); 
+
+// Update Expo push notification token for shop
+exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {
+  const { token } = req.body;
+  if (!token) {
+    return next(new ErrorHandler('Expo push token is required', 400));
+  }
+  const shop = await Shop.findById(req.seller._id);
+  if (!shop) {
+    return next(new ErrorHandler('Shop not found', 404));
+  }
+  shop.expoPushToken = token;
+  await shop.save();
+  res.status(200).json({ success: true, message: 'Expo push token updated', token });
+}); 

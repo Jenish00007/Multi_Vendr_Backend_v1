@@ -6,6 +6,7 @@ const { isAuthenticated, isSeller, isAdmin, isDeliveryMan } = require("../middle
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
+const { createOrderNotification } = require("../utils/notificationHelper");
 
 // create new order
 router.post(
@@ -13,7 +14,7 @@ router.post(
   isAuthenticated,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { cart, shippingAddress, totalPrice, paymentInfo } = req.body;
+      const { cart, shippingAddress, totalPrice, paymentInfo, userLocation } = req.body;
 
       // Get user details from the authenticated token
       const user = {
@@ -22,6 +23,23 @@ router.post(
         email: req.user.email,
         phoneNumber: req.user.phoneNumber
       };
+
+      // Validate userLocation if provided
+      if (userLocation) {
+        if (typeof userLocation.latitude !== 'number' || typeof userLocation.longitude !== 'number') {
+          return next(new ErrorHandler("Invalid location coordinates provided", 400));
+        }
+        
+        // Validate latitude range (-90 to 90)
+        if (userLocation.latitude < -90 || userLocation.latitude > 90) {
+          return next(new ErrorHandler("Invalid latitude value", 400));
+        }
+        
+        // Validate longitude range (-180 to 180)
+        if (userLocation.longitude < -180 || userLocation.longitude > 180) {
+          return next(new ErrorHandler("Invalid longitude value", 400));
+        }
+      }
 
       //   group cart items by shopId
       const shopItemsMap = new Map();
@@ -49,14 +67,17 @@ router.post(
       for (const [shopId, items] of shopItemsMap) {
         // Generate a 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        console.log('Creating order with userLocation:', userLocation);
+        
         const order = await Order.create({
           cart: items,
           shippingAddress,
           user,
           totalPrice,
           paymentInfo,
+          userLocation, // Save user location in the order
           otp, // Save OTP in the order
-          shop: shopId, // Add the shopId here
           shop: shopId, // Add the shopId here
         });
         orders.push(order);
@@ -110,6 +131,7 @@ router.get(
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
       }));
 
       res.status(200).json({
@@ -161,6 +183,7 @@ router.put(
         });
       }
 
+      const previousStatus = order.status;
       order.status = req.body.status;
 
       if (req.body.status === "Delivered") {
@@ -171,6 +194,45 @@ router.put(
       }
 
       await order.save({ validateBeforeSave: false });
+
+      // Create notification for order status change
+      try {
+        let notificationTitle = "";
+        let notificationDescription = "";
+
+        switch (req.body.status) {
+          case "Processing":
+            notificationTitle = "Order Processing";
+            notificationDescription = `Your order #${order.orderNumber} is now being processed.`;
+            break;
+          case "Transferred to delivery partner":
+            notificationTitle = "Order Out for Delivery";
+            notificationDescription = `Your order #${order.orderNumber} has been transferred to our delivery partner.`;
+            break;
+          case "Delivered":
+            notificationTitle = "Order Delivered";
+            notificationDescription = `Your order #${order.orderNumber} has been successfully delivered!`;
+            break;
+          case "Cancelled":
+            notificationTitle = "Order Cancelled";
+            notificationDescription = `Your order #${order.orderNumber} has been cancelled.`;
+            break;
+          default:
+            notificationTitle = "Order Status Updated";
+            notificationDescription = `Your order #${order.orderNumber} status has been updated to ${req.body.status}.`;
+        }
+
+        await createOrderNotification(
+          order.user,
+          order._id,
+          notificationTitle,
+          notificationDescription,
+          { previousStatus, newStatus: req.body.status }
+        );
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Don't fail the order update if notification fails
+      }
 
       res.status(200).json({
         success: true,
@@ -310,7 +372,6 @@ router.get(
 
       console.log("Found order:", order ? "Yes" : "No");
       console.log("Order deliveryMan (in get-order):", order?.deliveryMan);
-      console.log("Deliveryman ID from request (in get-order):", req.deliveryMan._id);
 
       if (!order) {
         return next(new ErrorHandler("Order not found with this id", 404));
@@ -340,6 +401,7 @@ router.get(
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
         deliveredAt: order.deliveredAt,
         paidAt: order.paidAt,
         otp: order.otp || null,
@@ -367,11 +429,10 @@ router.get(
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      console.log("Deliveryman fetching order with ID:", req.params.id);
-      console.log("Deliveryman ID:", req.deliveryMan._id);
+    
 
       const order = await Order.findById(req.params.id)
-        .populate('deliveryMan')
+       
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -405,6 +466,7 @@ router.get(
         })),
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
         deliveredAt: order.deliveredAt,
         paidAt: order.paidAt,
         otp: order.otp || null,
@@ -421,8 +483,6 @@ router.get(
         },
       };
 
-      console.log("Sending formatted order response to deliveryman");
-      console.log("Formatted order deliveryMan:", formattedOrder.deliveryMan);
       console.log("Formatted order items:", formattedOrder.items);
       console.log("Formatted order itemsQty:", formattedOrder.itemsQty);
 
@@ -483,7 +543,8 @@ router.get(
         },
         payment_type: order.paymentInfo?.type || "COD",
         delivery_instruction: order.delivery_instruction || "",
-        otp: order.otp || null
+        otp: order.otp || null,
+        userLocation: order.userLocation || null
       }));
 
       res.status(200).json({
@@ -595,6 +656,7 @@ router.put(
         })),
         shippingAddress: updatedOrder.shippingAddress,
         paymentInfo: updatedOrder.paymentInfo,
+        userLocation: updatedOrder.userLocation || null,
         deliveredAt: updatedOrder.deliveredAt,
         paidAt: updatedOrder.paidAt,
         otp: updatedOrder.otp || null,

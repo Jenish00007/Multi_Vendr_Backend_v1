@@ -48,6 +48,20 @@ const orderSchema = new mongoose.Schema({
       type: String,
     },
   },
+  userLocation: {
+    latitude: {
+      type: Number,
+      required: false,
+    },
+    longitude: {
+      type: Number,
+      required: false,
+    },
+    deliveryAddress: {
+      type: String,
+      required: false,
+    }
+  },
   paidAt: {
     type: Date,
     default: Date.now(),
