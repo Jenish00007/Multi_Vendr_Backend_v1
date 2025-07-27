@@ -69,6 +69,7 @@ const message = require("./controller/message");
 const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
 const deliveryman = require("./controller/deliveryman");
+const notification = require("./controller/notification");
 
 // New routes
 const moduleRoutes = require("./routes/moduleRoutes");
@@ -88,6 +89,7 @@ const distanceRoutes = require("./routes/distance");
 const configurationRoutes = require("./routes/configurationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const deliverymanRoutes = require("./routes/deliveryman");
+const unitRoutes = require("./routes/unitRoutes");
 
 // end points
 app.use("/v2/withdraw", withdraw);
@@ -100,6 +102,7 @@ app.use("/v2/product", product);
 app.use("/v2/event", event);
 app.use("/v2/coupon", coupon);
 app.use("/v2/payment", payment);
+app.use("/v2/notification", notification);
 
 // New endpoints
 app.use("/v2/modules", moduleRoutes);
@@ -119,6 +122,7 @@ app.use("/v2/config", distanceRoutes);
 app.use("/v2/settings", configurationRoutes);
 app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
+app.use("/v2/units", unitRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);

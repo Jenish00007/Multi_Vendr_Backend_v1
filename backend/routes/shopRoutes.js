@@ -5,8 +5,10 @@ const {
   getLatestShops,
   getTopOfferShops,
   getRecommendedShops,
-  getAllStores
+  getAllStores,
+  updateExpoPushToken
 } = require("../controller/shopController");
+const { isSeller } = require("../middleware/auth");
 
 // Get popular shops
 router.get("/popular", getPopularShops);
@@ -22,5 +24,8 @@ router.get("/all", getAllStores);
 
 // Get recommended shops near me
 router.get("/recommended", getRecommendedShops);
+
+// Update Expo push notification token for shop
+router.put("/expo-push-token", isSeller, updateExpoPushToken);
 
 module.exports = router;

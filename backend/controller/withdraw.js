@@ -23,14 +23,20 @@ router.post(
         bankIfscCode,
       };
 
-      try {
-        await sendEmail({
-          email: req.seller.email,
-          subject: "Withdraw Request",
-          message: `Hello ${req.seller.name}, Your withdraw request of ${amount}$ is processing. It will take 3days to 7days to processing! `,
-        });
-      } catch (error) {
-        return next(new ErrorHandler(error.message, 500));
+      // Use Nodemailer-based sendEmail (to, subject, html)
+      if (!req.seller.email) {
+        console.error("No recipient email found for seller:", req.seller);
+        // Optionally: return next(new ErrorHandler("No recipient email found", 400));
+      } else {
+        try {
+          await sendEmail(
+            req.seller.email,
+            "Withdraw Request",
+            `<p>Hello ${req.seller.name},</p><p>Your withdraw request of ₹${amount} is processing. It will take 3 to 7 days to process!</p>`
+          );
+        } catch (error) {
+          return next(new ErrorHandler(error.message, 500));
+        }
       }
 
       const withdraw = await Withdraw.create(data);
@@ -51,8 +57,7 @@ router.post(
   })
 );
 
-// get all withdraws --- admnin
-
+// get all withdraws --- admin
 router.get(
   "/get-all-withdraw-request",
   isAuthenticated,
@@ -64,6 +69,24 @@ router.get(
       res.status(201).json({
         success: true,
         withdraws,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// get seller withdraws --- seller
+router.get(
+  "/get-all-withdraw-request-seller",
+  isSeller,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const withdrawals = await Withdraw.find({ seller: req.seller._id }).sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        withdrawals,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
