@@ -57,6 +57,10 @@ const deliverymanSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    expoPushToken: {
+        type: String,
+        default: null,
+    },
     currentLocation: {
         type: {
             type: String,

@@ -29,7 +29,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
   })
 );
@@ -89,6 +89,7 @@ const distanceRoutes = require("./routes/distance");
 const configurationRoutes = require("./routes/configurationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const deliverymanRoutes = require("./routes/deliveryman");
+const unitRoutes = require("./routes/unitRoutes");
 
 // end points
 app.use("/v2/withdraw", withdraw);
@@ -121,6 +122,7 @@ app.use("/v2/config", distanceRoutes);
 app.use("/v2/settings", configurationRoutes);
 app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
+app.use("/v2/units", unitRoutes);
 
 // it'for errhendel
 app.use(ErrorHandler);

@@ -13,6 +13,8 @@ exports.getRecommendedProducts = catchAsyncErrors(async (req, res, next) => {
 
   // Execute query with sorting and pagination
   const products = await Product.find()
+    .populate('category', 'name')
+    .populate('subcategory', 'name')
     .sort({ ratings: -1, sold_out: -1 })
     .skip(skip)
     .limit(limitValue);
@@ -81,9 +83,15 @@ exports.getTopOffers = catchAsyncErrors(async (req, res, next) => {
   const products = result[0].products;
   const total = result[0].totalCount[0]?.count || 0;
 
+  // Populate category and subcategory for aggregated results
+  const populatedProducts = await Product.populate(products, [
+    { path: 'category', select: 'name' },
+    { path: 'subcategory', select: 'name' }
+  ]);
+
   res.status(200).json({
     success: true,
-    products,
+    products: populatedProducts,
     total,
     currentPage: parseInt(page),
     totalPages: Math.ceil(total / limitValue),
@@ -101,6 +109,8 @@ exports.getMostPopularItems = catchAsyncErrors(async (req, res, next) => {
 
   // Execute query with sorting and pagination
   const products = await Product.find()
+    .populate('category', 'name')
+    .populate('subcategory', 'name')
     .sort({ sold_out: -1, ratings: -1 })
     .skip(skip)
     .limit(limitValue);
@@ -143,6 +153,8 @@ exports.getLatestItems = catchAsyncErrors(async (req, res, next) => {
 
   // Execute query with sorting and pagination
   const products = await Product.find(query)
+    .populate('category', 'name')
+    .populate('subcategory', 'name')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limitValue);

@@ -372,7 +372,6 @@ router.get(
 
       console.log("Found order:", order ? "Yes" : "No");
       console.log("Order deliveryMan (in get-order):", order?.deliveryMan);
-      console.log("Deliveryman ID from request (in get-order):", req.deliveryMan._id);
 
       if (!order) {
         return next(new ErrorHandler("Order not found with this id", 404));
@@ -430,11 +429,10 @@ router.get(
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      console.log("Deliveryman fetching order with ID:", req.params.id);
-      console.log("Deliveryman ID:", req.deliveryMan._id);
+    
 
       const order = await Order.findById(req.params.id)
-        .populate('deliveryMan')
+       
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -485,8 +483,6 @@ router.get(
         },
       };
 
-      console.log("Sending formatted order response to deliveryman");
-      console.log("Formatted order deliveryMan:", formattedOrder.deliveryMan);
       console.log("Formatted order items:", formattedOrder.items);
       console.log("Formatted order itemsQty:", formattedOrder.itemsQty);
 

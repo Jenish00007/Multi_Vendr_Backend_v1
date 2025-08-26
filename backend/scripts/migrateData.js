@@ -174,6 +174,10 @@ function registerModels(connection) {
       enum: ['kg', 'pcs', 'lr', 'Pack'],
       required: [true, "Please select a unit!"],
     },
+    unitCount: {
+      type: Number,
+      required: [true, "Please enter unit count!"],
+    },
     maxPurchaseQuantity: {
       type: Number,
       required: [true, "Please enter maximum purchase quantity!"],
@@ -433,6 +437,7 @@ async function migrateProducts() {
           discountPrice: product.discountPrice,
           stock: product.stock,
           unit: product.unit,
+          unitCount: product.unitCount || 1, // Default to 1 if not present in source
           maxPurchaseQuantity: product.maxPurchaseQuantity,
           images: product.images,
           reviews: product.reviews,

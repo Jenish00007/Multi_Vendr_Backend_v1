@@ -575,3 +575,25 @@ exports.getDeliveryManPreview = catchAsyncErrors(async (req, res, next) => {
         deliveryMan,
     });
 }); 
+
+// Update Expo push notification token for delivery man
+exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {
+    const { token } = req.body;
+    if (!token) {
+        return next(new ErrorHandler('Expo push token is required', 400));
+    }
+    
+    const deliveryMan = await DeliveryMan.findById(req.deliveryMan._id);
+    if (!deliveryMan) {
+        return next(new ErrorHandler('Delivery man not found', 404));
+    }
+    
+    deliveryMan.expoPushToken = token;
+    await deliveryMan.save();
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Expo push token updated', 
+        token 
+    });
+}); 

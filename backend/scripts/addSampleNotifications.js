@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Notification = require('../model/notification');
 const User = require('../model/user');
 // MongoDB connection string
-const MONGODB_URI = "mongodb+srv://jebilinjebilin96:Jebilin%402000@cluster0.tdceulr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const MONGODB_URI = "mongodb+srv://qaudsinfo:Qauds123@cluster0.nyfuhwt.mongodb.net/qauds?retryWrites=true&w=majority&appName=Cluster0";
 
 // Try to load environment variables, but use defaults if not available
 try {

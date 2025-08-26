@@ -23,6 +23,12 @@ const configurationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    appType: {
+        type: String,
+        enum: ['multivendor', 'singlevendor'],
+        required: true,
+        default: 'singlevendor'
+    },
     versionCode: {
         type: Number,
         required: true,
