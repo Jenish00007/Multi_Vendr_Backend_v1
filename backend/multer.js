@@ -38,24 +38,26 @@ const UPLOAD_FOLDERS = {
   EVENT_IMAGES: 'events/images',
 };
 
-// Map fieldnames to their respective folders
-const FOLDER_MAPPING = {
-  // Shop related
-  'images': UPLOAD_FOLDERS.PRODUCTS,
-  'eventImages': UPLOAD_FOLDERS.EVENT_IMAGES,
-  'banner': UPLOAD_FOLDERS.BANNERS,
-  'shopAvatar': UPLOAD_FOLDERS.SHOP_AVATAR,
-  'shopBanner': UPLOAD_FOLDERS.SHOP_BANNER,
-  'avatar': UPLOAD_FOLDERS.USER_AVATAR,
-  // Admin related
-  'adminBanner': UPLOAD_FOLDERS.ADMIN_BANNER,
-  'categoryBanner': UPLOAD_FOLDERS.CATEGORY_BANNER,
-  'subcategoryBanner': UPLOAD_FOLDERS.SUBCATEGORY_BANNER,
-  // Module related
-  'moduleBanner': UPLOAD_FOLDERS.MODULE_BANNER,
-  // Event related
-  'eventBanner': UPLOAD_FOLDERS.EVENT_BANNER,
-};
+  // Map fieldnames to their respective folders
+  const FOLDER_MAPPING = {
+    // Shop related
+    'images': UPLOAD_FOLDERS.PRODUCTS,
+    'eventImages': UPLOAD_FOLDERS.EVENT_IMAGES,
+    'banner': UPLOAD_FOLDERS.BANNERS,
+    'shopAvatar': UPLOAD_FOLDERS.SHOP_AVATAR,
+    'shopBanner': UPLOAD_FOLDERS.SHOP_BANNER,
+    'avatar': UPLOAD_FOLDERS.USER_AVATAR,
+    'file': UPLOAD_FOLDERS.USER_AVATAR, // For user avatar uploads
+    'image': UPLOAD_FOLDERS.SHOP_AVATAR, // For shop avatar updates
+    // Admin related
+    'adminBanner': UPLOAD_FOLDERS.ADMIN_BANNER,
+    'categoryBanner': UPLOAD_FOLDERS.CATEGORY_BANNER,
+    'subcategoryBanner': UPLOAD_FOLDERS.SUBCATEGORY_BANNER,
+    // Module related
+    'moduleBanner': UPLOAD_FOLDERS.MODULE_BANNER,
+    // Event related
+    'eventBanner': UPLOAD_FOLDERS.EVENT_BANNER,
+  };
 
 const upload = multer({
   storage: multerS3({

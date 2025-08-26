@@ -7,7 +7,8 @@ const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Category = require("../model/Category");
 const Subcategory = require("../model/Subcategory");
-const { upload } = require("../multer");
+const Unit = require("../model/Unit");
+const { upload, handleMulterError } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
 const mongoose = require("mongoose");
 
@@ -20,6 +21,7 @@ const isValidObjectId = (id) => {
 router.post(
   "/create-product",
   upload.array("images"),
+  handleMulterError,
   catchAsyncErrors(async (req, res, next) => {
     try {
       const { shopId, category, subcategory } = req.body;
@@ -266,26 +268,25 @@ router.get(
 // update product
 router.put(
   "/update-product/:id",
- 
+  upload.array("images"),
+  handleMulterError,
+  isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
       const productId = req.params.id;
-
       if (!productId || !isValidObjectId(productId)) {
         return next(new ErrorHandler("Invalid product ID format", 400));
       }
-
       const product = await Product.findById(productId);
-      
       if (!product) {
         return next(new ErrorHandler("Product not found!", 404));
       }
+      // Check if the product belongs to the seller
+      if (product.shopId !== req.seller._id.toString()) {
+        return next(new ErrorHandler("You are not authorized to update this product!", 403));
+      }
 
-      // // Check if the product belongs to the seller
-      // if (product.shop.toString() !== req.seller._id.toString()) {
-      //   return next(new ErrorHandler("You are not authorized to update this product!", 403));
-      // }
-
+      // Parse fields from req.body
       const {
         name,
         description,
@@ -295,19 +296,19 @@ router.put(
         originalPrice,
         discountPrice,
         stock,
-        images,
+        unit,
+        unitCount,
+        maxPurchaseQuantity,
       } = req.body;
 
       // Validate category ID if provided
       if (category && !isValidObjectId(category)) {
         return next(new ErrorHandler("Invalid category ID format", 400));
       }
-
       // Validate subcategory ID if provided
       if (subcategory && !isValidObjectId(subcategory)) {
         return next(new ErrorHandler("Invalid subcategory ID format", 400));
       }
-
       // Check if category exists if provided
       if (category) {
         const categoryExists = await Category.findById(category);
@@ -315,7 +316,6 @@ router.put(
           return next(new ErrorHandler("Category not found!", 404));
         }
       }
-
       // Check if subcategory exists and belongs to the selected category if provided
       if (subcategory && category) {
         const subcategoryExists = await Subcategory.findOne({
@@ -325,6 +325,54 @@ router.put(
         if (!subcategoryExists) {
           return next(new ErrorHandler("Subcategory not found or does not belong to the selected category!", 404));
         }
+      }
+
+      // Handle images: merge existing image URLs and new uploads
+      let images = [];
+      
+      // Parse existing image URLs from req.body.existingImages
+      let existingImages = [];
+      if (req.body.existingImages) {
+        try {
+          // Handle both string and array formats
+          if (typeof req.body.existingImages === 'string') {
+            existingImages = JSON.parse(req.body.existingImages);
+          } else if (Array.isArray(req.body.existingImages)) {
+            existingImages = req.body.existingImages;
+          }
+          console.log('Existing images parsed:', existingImages);
+        } catch (parseError) {
+          console.error('Error parsing existingImages:', parseError);
+          return next(new ErrorHandler("Invalid existing images format", 400));
+        }
+      }
+      
+      // Add existing images to the images array
+      images = images.concat(existingImages);
+      
+      // Add new uploaded images
+      if (req.files && req.files.length > 0) {
+        const uploadedUrls = req.files.map(file => file.location);
+        console.log('New uploaded images:', uploadedUrls);
+        images = images.concat(uploadedUrls);
+      }
+
+      console.log('Total images before validation:', images);
+
+      // Validate that we have at least one image
+      if (images.length === 0) {
+        return next(new ErrorHandler("At least one product image is required", 400));
+      }
+
+      // Validate image URLs (basic check)
+      const validImages = images.filter(img => {
+        return typeof img === 'string' && img.trim().length > 0;
+      });
+
+      console.log('Valid images after filtering:', validImages);
+
+      if (validImages.length === 0) {
+        return next(new ErrorHandler("No valid images provided", 400));
       }
 
       const updatedProduct = await Product.findByIdAndUpdate(
@@ -338,7 +386,10 @@ router.put(
           originalPrice,
           discountPrice,
           stock,
-          images,
+          unit,
+          unitCount,
+          maxPurchaseQuantity,
+          images: validImages,
         },
         { new: true, runValidators: true }
       );
@@ -514,6 +565,45 @@ router.get(
         currentPage: parseInt(offset),
         totalPages: Math.ceil(total / limitValue)
       });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// Get all available units
+router.get(
+  "/units",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      // Get units from the database
+      const units = await Unit.find({ isActive: true })
+        .sort({ sortOrder: 1, name: 1 });
+
+      // If no units found in database, return default units
+      if (units.length === 0) {
+        const defaultUnits = [
+          { id: 'kg', name: 'Kilograms (kg)', description: 'Weight in kilograms', category: 'weight' },
+          { id: 'g', name: 'Grams (g)', description: 'Weight in grams', category: 'weight' },
+          { id: 'pcs', name: 'Pieces (pcs)', description: 'Individual items', category: 'count' },
+          { id: 'ml', name: 'Milliliters (ml)', description: 'Volume in milliliters', category: 'volume' },
+          { id: 'ltr', name: 'Liters (ltr)', description: 'Volume in liters', category: 'volume' },
+          { id: 'pack', name: 'Pack', description: 'Packaged items', category: 'count' }
+        ];
+
+        // Create default units in database
+        await Unit.insertMany(defaultUnits);
+        
+        res.status(200).json({
+          success: true,
+          data: defaultUnits
+        });
+      } else {
+        res.status(200).json({
+          success: true,
+          data: units
+        });
+      }
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }

@@ -5,11 +5,36 @@ const express = require("express");
 const { isSeller, isAuthenticated, isAdmin } = require("../middleware/auth");
 const Withdraw = require("../model/withdraw");
 const sendEmail = require("../config/email.config");
+const Configuration = require("../model/Configuration");
 const router = express.Router();
+
+// Middleware to check if withdraw functionality should be enabled
+const checkWithdrawEnabled = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const configuration = await Configuration.findOne({ isActive: true });
+    
+    if (!configuration) {
+      return next(new ErrorHandler("Configuration not found", 404));
+    }
+    
+    // If app type is single vendor, disable withdraw functionality
+    if (configuration.appType === 'singlevendor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Withdraw functionality is not available for single vendor apps'
+      });
+    }
+    
+    next();
+  } catch (error) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+});
 
 // create withdraw request --- only for seller
 router.post(
   "/create-withdraw-request",
+  checkWithdrawEnabled,
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
@@ -23,14 +48,20 @@ router.post(
         bankIfscCode,
       };
 
-      try {
-        await sendEmail({
-          email: req.seller.email,
-          subject: "Withdraw Request",
-          message: `Hello ${req.seller.name}, Your withdraw request of ${amount}$ is processing. It will take 3days to 7days to processing! `,
-        });
-      } catch (error) {
-        return next(new ErrorHandler(error.message, 500));
+      // Use Nodemailer-based sendEmail (to, subject, html)
+      if (!req.seller.email) {
+        console.error("No recipient email found for seller:", req.seller);
+        // Optionally: return next(new ErrorHandler("No recipient email found", 400));
+      } else {
+        try {
+          await sendEmail(
+            req.seller.email,
+            "Withdraw Request",
+            `<p>Hello ${req.seller.name},</p><p>Your withdraw request of ₹${amount} is processing. It will take 3 to 7 days to process!</p>`
+          );
+        } catch (error) {
+          return next(new ErrorHandler(error.message, 500));
+        }
       }
 
       const withdraw = await Withdraw.create(data);
@@ -51,10 +82,10 @@ router.post(
   })
 );
 
-// get all withdraws --- admnin
-
+// get all withdraws --- admin
 router.get(
   "/get-all-withdraw-request",
+  checkWithdrawEnabled,
   isAuthenticated,
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {
@@ -71,9 +102,29 @@ router.get(
   })
 );
 
+// get seller withdraws --- seller
+router.get(
+  "/get-all-withdraw-request-seller",
+  checkWithdrawEnabled,
+  isSeller,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const withdrawals = await Withdraw.find({ seller: req.seller._id }).sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        withdrawals,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 // update withdraw request ---- admin
 router.put(
   "/update-withdraw-request/:id",
+  checkWithdrawEnabled,
   isAuthenticated,
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {

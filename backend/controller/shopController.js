@@ -31,9 +31,24 @@ exports.getPopularShops = catchAsyncErrors(async (req, res, next) => {
     }
   ]);
 
+  // Check app type to conditionally hide withdraw-related fields
+  const Configuration = require("../model/Configuration");
+  const configuration = await Configuration.findOne({ isActive: true });
+  
+  let shopsData = shops.map(shop => {
+    // If app type is single vendor, hide withdraw-related fields
+    if (configuration && configuration.appType === 'singlevendor') {
+      delete shop.withdrawMethod;
+      delete shop.availableBalance;
+      delete shop.transections;
+    }
+    
+    return shop;
+  });
+
   res.status(200).json({
     success: true,
-    shops
+    shops: shopsData
   });
 });
 
@@ -43,9 +58,26 @@ exports.getLatestShops = catchAsyncErrors(async (req, res, next) => {
     .sort({ createdAt: -1 })
     .limit(10);
 
+  // Check app type to conditionally hide withdraw-related fields
+  const Configuration = require("../model/Configuration");
+  const configuration = await Configuration.findOne({ isActive: true });
+  
+  let shopsData = shops.map(shop => {
+    let shopData = shop.toObject();
+    
+    // If app type is single vendor, hide withdraw-related fields
+    if (configuration && configuration.appType === 'singlevendor') {
+      delete shopData.withdrawMethod;
+      delete shopData.availableBalance;
+      delete shopData.transections;
+    }
+    
+    return shopData;
+  });
+
   res.status(200).json({
     success: true,
-    shops
+    shops: shopsData
   });
 });
 
@@ -84,9 +116,24 @@ exports.getTopOfferShops = catchAsyncErrors(async (req, res, next) => {
     }
   ]);
 
+  // Check app type to conditionally hide withdraw-related fields
+  const Configuration = require("../model/Configuration");
+  const configuration = await Configuration.findOne({ isActive: true });
+  
+  let shopsData = shops.map(shop => {
+    // If app type is single vendor, hide withdraw-related fields
+    if (configuration && configuration.appType === 'singlevendor') {
+      delete shop.withdrawMethod;
+      delete shop.availableBalance;
+      delete shop.transections;
+    }
+    
+    return shop;
+  });
+
   res.status(200).json({
     success: true,
-    shops
+    shops: shopsData
   });
 });
 
@@ -122,9 +169,26 @@ exports.getRecommendedShops = catchAsyncErrors(async (req, res, next) => {
     }
   }).limit(10);
 
+  // Check app type to conditionally hide withdraw-related fields
+  const Configuration = require("../model/Configuration");
+  const configuration = await Configuration.findOne({ isActive: true });
+  
+  let shopsData = shops.map(shop => {
+    let shopData = shop.toObject();
+    
+    // If app type is single vendor, hide withdraw-related fields
+    if (configuration && configuration.appType === 'singlevendor') {
+      delete shopData.withdrawMethod;
+      delete shopData.availableBalance;
+      delete shopData.transections;
+    }
+    
+    return shopData;
+  });
+
   res.status(200).json({
     success: true,
-    shops
+    shops: shopsData
   });
 });
 
@@ -153,11 +217,43 @@ exports.getAllStores = catchAsyncErrors(async (req, res, next) => {
   // Get total count for pagination
   const total = await Shop.countDocuments(query);
 
+  // Check app type to conditionally hide withdraw-related fields
+  const Configuration = require("../model/Configuration");
+  const configuration = await Configuration.findOne({ isActive: true });
+  
+  let shopsData = shops.map(shop => {
+    let shopData = shop.toObject();
+    
+    // If app type is single vendor, hide withdraw-related fields
+    if (configuration && configuration.appType === 'singlevendor') {
+      delete shopData.withdrawMethod;
+      delete shopData.availableBalance;
+      delete shopData.transections;
+    }
+    
+    return shopData;
+  });
+
   res.status(200).json({
     success: true,
-    shops,
+    shops: shopsData,
     total,
     currentPage: Math.floor(skip / limitValue) + 1,
     totalPages: Math.ceil(total / limitValue)
   });
+}); 
+
+// Update Expo push notification token for shop
+exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {
+  const { token } = req.body;
+  if (!token) {
+    return next(new ErrorHandler('Expo push token is required', 400));
+  }
+  const shop = await Shop.findById(req.seller._id);
+  if (!shop) {
+    return next(new ErrorHandler('Shop not found', 404));
+  }
+  shop.expoPushToken = token;
+  await shop.save();
+  res.status(200).json({ success: true, message: 'Expo push token updated', token });
 }); 

@@ -22,11 +22,15 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
       return next(new ErrorHandler("User already exists", 400));
     }
 
+    // Check app type to conditionally include withdraw-related fields
+    const Configuration = require("../model/Configuration");
+    const configuration = await Configuration.findOne({ isActive: true });
+    
     const seller = {
       name: req.body.name,
       email: email,
       password: req.body.password,
-      avatar: req.file.location, // Use the S3 URL directly
+      avatar: req.file ? req.file.location : "https://your-default-avatar-url.com/default-avatar.jpg", // Use the S3 URL directly
       address: req.body.address,
       phoneNumber: req.body.phoneNumber,
       zipCode: req.body.zipCode,
@@ -35,6 +39,11 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
         coordinates: [0, 0] // Default coordinates, can be updated later
       }
     };
+    
+    // Only include withdraw-related fields if app type is multivendor
+    if (configuration && configuration.appType === 'multivendor') {
+      seller.withdrawMethod = req.body.withdrawMethod || null;
+    }
 
     // Create shop directly without activation
     const newSeller = await Shop.create(seller);
@@ -151,9 +160,22 @@ router.get(
         return next(new ErrorHandler("User doesn't exists", 400));
       }
 
+      // Check app type to conditionally hide withdraw-related fields
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      let sellerData = seller.toObject();
+      
+      // If app type is single vendor, hide withdraw-related fields
+      if (configuration && configuration.appType === 'singlevendor') {
+        delete sellerData.withdrawMethod;
+        delete sellerData.availableBalance;
+        delete sellerData.transections;
+      }
+
       res.status(200).json({
         success: true,
-        seller,
+        seller: sellerData,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -191,9 +213,22 @@ router.get(
         return next(new ErrorHandler("Shop not found with this id", 404));
       }
 
+      // Check app type to conditionally hide withdraw-related fields
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      let shopData = shop.toObject();
+      
+      // If app type is single vendor, hide withdraw-related fields
+      if (configuration && configuration.appType === 'singlevendor') {
+        delete shopData.withdrawMethod;
+        delete shopData.availableBalance;
+        delete shopData.transections;
+      }
+
       res.status(200).json({
         success: true,
-        shop,
+        shop: shopData,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -210,11 +245,15 @@ router.put(
     try {
       const existsUser = await Shop.findById(req.seller._id);
 
-      const existAvatarPath = `uploads/${existsUser.avatar}`;
+      // Only try to delete local file if it's not an S3 URL
+      if (existsUser.avatar && !existsUser.avatar.startsWith('http')) {
+        const existAvatarPath = `uploads/${existsUser.avatar}`;
+        if (fs.existsSync(existAvatarPath)) {
+          fs.unlinkSync(existAvatarPath);
+        }
+      }
 
-      fs.unlinkSync(existAvatarPath);
-
-      const fileUrl = path.join(req.file.filename);
+      const fileUrl = req.file.location || path.join(req.file.filename);
 
       const seller = await Shop.findByIdAndUpdate(req.seller._id, {
         avatar: fileUrl,
@@ -236,9 +275,9 @@ router.put(
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { name, description, address, phoneNumber, zipCode } = req.body;
+      const { name, description, address, phoneNumber, zipCode, businessHours } = req.body;
 
-      const shop = await Shop.findOne(req.seller._id);
+      const shop = await Shop.findById(req.seller._id);
 
       if (!shop) {
         return next(new ErrorHandler("User not found", 400));
@@ -249,12 +288,58 @@ router.put(
       shop.address = address;
       shop.phoneNumber = phoneNumber;
       shop.zipCode = zipCode;
+      
+      // Update business hours if provided
+      if (businessHours) {
+        shop.businessHours = businessHours;
+      }
 
       await shop.save();
 
       res.status(201).json({
         success: true,
         shop,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// change password
+router.put(
+  "/change-password",
+  isSeller,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword) {
+        return next(new ErrorHandler("Please provide old and new password", 400));
+      }
+
+      if (newPassword.length < 6) {
+        return next(new ErrorHandler("Password should be at least 6 characters", 400));
+      }
+
+      const seller = await Shop.findById(req.seller._id).select("+password");
+
+      if (!seller) {
+        return next(new ErrorHandler("User not found", 400));
+      }
+
+      const isPasswordValid = await seller.comparePassword(oldPassword);
+
+      if (!isPasswordValid) {
+        return next(new ErrorHandler("Old password is incorrect", 400));
+      }
+
+      seller.password = newPassword;
+      await seller.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Password updated successfully!",
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -272,9 +357,27 @@ router.get(
       const sellers = await Shop.find().sort({
         createdAt: -1,
       });
+      
+      // Check app type to conditionally hide withdraw-related fields
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      let sellersData = sellers.map(seller => {
+        let sellerData = seller.toObject();
+        
+        // If app type is single vendor, hide withdraw-related fields
+        if (configuration && configuration.appType === 'singlevendor') {
+          delete sellerData.withdrawMethod;
+          delete sellerData.availableBalance;
+          delete sellerData.transections;
+        }
+        
+        return sellerData;
+      });
+      
       res.status(201).json({
         success: true,
-        sellers,
+        sellers: sellersData,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -315,6 +418,14 @@ router.put(
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
+      // Check app type to conditionally allow withdraw-related operations
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      if (configuration && configuration.appType === 'singlevendor') {
+        return next(new ErrorHandler("Withdraw functionality is not available for single vendor apps", 403));
+      }
+
       const { withdrawMethod } = req.body;
 
       const seller = await Shop.findByIdAndUpdate(req.seller._id, {
@@ -337,6 +448,14 @@ router.delete(
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
+      // Check app type to conditionally allow withdraw-related operations
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      if (configuration && configuration.appType === 'singlevendor') {
+        return next(new ErrorHandler("Withdraw functionality is not available for single vendor apps", 403));
+      }
+
       const seller = await Shop.findById(req.seller._id);
 
       if (!seller) {

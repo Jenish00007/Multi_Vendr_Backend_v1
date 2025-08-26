@@ -68,6 +68,7 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
 
       res.status(201).json({
         success: true,
+        message: "User registered successfully!",
         token,
         user: {
           id: user._id,
@@ -87,6 +88,49 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
   }
 });
 
+// update user push token
+router.put(
+  "/expo-push-token",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        return next(new ErrorHandler("Push token is required", 400));
+      }
+
+      const user = await User.findById(req.user.id);
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      // Update push token
+      user.pushToken = token;
+      await user.save();
+
+      console.log(`Push token updated for user ${user.email}: ${token}`);
+
+      res.status(200).json({
+        success: true,
+        message: "Push token updated successfully",
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          avatar: user.avatar,
+          pushToken: user.pushToken
+        }
+      });
+    } catch (error) {
+      console.error('Error updating push token:', error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 // login user
 router.post(
   "/login-user",
@@ -97,7 +141,7 @@ router.post(
         phoneNumber: req.body.phoneNumber 
       });
       
-      const { email, phoneNumber, password } = req.body;
+      const { email, phoneNumber, password, pushToken } = req.body;
 
       if ((!email && !phoneNumber) || !password) {
         console.log('Missing credentials');
@@ -130,8 +174,35 @@ router.post(
         );
       }
 
+      // Update push token if provided
+      if (pushToken) {
+        user.pushToken = pushToken;
+        await user.save();
+        console.log(`Push token updated for user ${user.email}: ${pushToken}`);
+      }
+
       console.log('Login successful');
-      sendToken(user, 201, res);
+      
+      // Generate token
+      const token = user.getJwtToken();
+      
+      // Return user data without sensitive information
+      const userData = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        avatar: user.avatar,
+        role: user.role,
+        isPhoneVerified: user.isPhoneVerified,
+        pushToken: user.pushToken
+      };
+
+      res.status(201).json({
+        success: true,
+        token,
+        user: userData
+      });
     } catch (error) {
       console.error('Login error:', error);
       return next(new ErrorHandler(error.message, 500));

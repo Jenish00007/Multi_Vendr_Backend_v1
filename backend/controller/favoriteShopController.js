@@ -64,7 +64,7 @@ exports.getFavoriteShops = catchAsyncErrors(async (req, res, next) => {
         .limit(limit)
         .populate({
             path: 'shop',
-            select: 'name avatar address phone ratings'
+            select: 'name avatar address phone ratings withdrawMethod availableBalance transections'
         });
 
     // Get total count for pagination
@@ -73,9 +73,26 @@ exports.getFavoriteShops = catchAsyncErrors(async (req, res, next) => {
     // Calculate total pages
     const totalPages = Math.ceil(totalShops / limit);
 
+    // Check app type to conditionally hide withdraw-related fields
+    const Configuration = require('../model/Configuration');
+    const configuration = await Configuration.findOne({ isActive: true });
+    
+    let processedFavoriteShops = favoriteShops.map(favoriteShop => {
+        let shopData = favoriteShop.toObject();
+        
+        // If app type is single vendor, hide withdraw-related fields
+        if (configuration && configuration.appType === 'singlevendor' && shopData.shop) {
+            delete shopData.shop.withdrawMethod;
+            delete shopData.shop.availableBalance;
+            delete shopData.shop.transections;
+        }
+        
+        return shopData;
+    });
+
     res.status(200).json({
         success: true,
-        favoriteShops,
+        favoriteShops: processedFavoriteShops,
         pagination: {
             currentPage: page,
             totalPages,
