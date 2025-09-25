@@ -8,6 +8,21 @@ exports.addToCart = catchAsyncErrors(async (req, res, next) => {
     const { productId, quantity, selectedVariation } = req.body;
     const userId = req.user._id;
 
+    // Input validation
+    const mongoose = require('mongoose');
+    if (!productId) {
+        return next(new ErrorHandler('Product ID is required', 400));
+    }
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        return next(new ErrorHandler('Invalid product ID format', 400));
+    }
+    if (!quantity || quantity <= 0 || !Number.isInteger(Number(quantity))) {
+        return next(new ErrorHandler('Quantity must be a positive integer', 400));
+    }
+    if (Number(quantity) > 999) {
+        return next(new ErrorHandler('Quantity cannot exceed 999', 400));
+    }
+
     // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
@@ -16,7 +31,7 @@ exports.addToCart = catchAsyncErrors(async (req, res, next) => {
 
     // Check if product is in stock
     if (product.stock < quantity) {
-        return next(new ErrorHandler('Product is out of stock', 400));
+        return next(new ErrorHandler(`Only ${product.stock} items available in stock`, 400));
     }
 
     // Check if product already in cart
@@ -79,6 +94,21 @@ exports.updateCartItem = catchAsyncErrors(async (req, res, next) => {
     const { quantity } = req.body;
     const userId = req.user._id;
 
+    // Input validation
+    const mongoose = require('mongoose');
+    if (!cartItemId) {
+        return next(new ErrorHandler('Cart item ID is required', 400));
+    }
+    if (!mongoose.Types.ObjectId.isValid(cartItemId)) {
+        return next(new ErrorHandler('Invalid cart item ID format', 400));
+    }
+    if (!quantity || quantity <= 0 || !Number.isInteger(Number(quantity))) {
+        return next(new ErrorHandler('Quantity must be a positive integer', 400));
+    }
+    if (Number(quantity) > 999) {
+        return next(new ErrorHandler('Quantity cannot exceed 999', 400));
+    }
+
     const cartItem = await Cart.findOne({ _id: cartItemId, user: userId });
     if (!cartItem) {
         return next(new ErrorHandler('Cart item not found', 404));
@@ -86,8 +116,11 @@ exports.updateCartItem = catchAsyncErrors(async (req, res, next) => {
 
     // Check if product is in stock
     const product = await Product.findById(cartItem.product);
+    if (!product) {
+        return next(new ErrorHandler('Product not found', 404));
+    }
     if (product.stock < quantity) {
-        return next(new ErrorHandler('Product is out of stock', 400));
+        return next(new ErrorHandler(`Only ${product.stock} items available in stock`, 400));
     }
 
     cartItem.quantity = quantity;
@@ -99,21 +132,95 @@ exports.updateCartItem = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
-// Remove from cart
+// Remove single item from cart
 exports.removeFromCart = catchAsyncErrors(async (req, res, next) => {
-    const { cartItemId } = req.params;
-    const userId = req.user._id;
+    try {
+        const { cartItemId } = req.params;
+        const userId = req.user._id;
 
-    const cartItem = await Cart.findOneAndDelete({ _id: cartItemId, user: userId });
-    
-    if (!cartItem) {
-        return next(new ErrorHandler('Cart item not found', 404));
+        // Input validation
+        const mongoose = require('mongoose');
+        if (!cartItemId) {
+            return next(new ErrorHandler('Cart item ID is required', 400));
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(cartItemId)) {
+            return next(new ErrorHandler('Invalid cart item ID format', 400));
+        }
+
+        // Find and remove the cart item
+        const cartItem = await Cart.findOneAndDelete({ 
+            _id: cartItemId, 
+            user: userId 
+        });
+
+        if (!cartItem) {
+            return next(new ErrorHandler('Cart item not found or access denied', 404));
+        }
+
+        console.log(`Cart item removed for user ${userId}: Item ${cartItemId}`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Item removed from cart successfully',
+            removedItemId: cartItemId
+        });
+
+    } catch (error) {
+        console.error('Error in removeFromCart:', error);
+        return next(new ErrorHandler(error.message || 'Failed to remove cart item', 500));
     }
+});
 
-    res.status(200).json({
-        success: true,
-        message: 'Item removed from cart'
-    });
+// Remove multiple items from cart
+exports.removeMultipleFromCart = catchAsyncErrors(async (req, res, next) => {
+    try {
+        const { cartItems } = req.body;
+        const userId = req.user._id;
+
+        // Input validation
+        if (!cartItems || !Array.isArray(cartItems)) {
+            return next(new ErrorHandler('Cart items array is required', 400));
+        }
+
+        if (cartItems.length === 0) {
+            return next(new ErrorHandler('At least one cart item ID is required', 400));
+        }
+
+        if (cartItems.length > 100) {
+            return next(new ErrorHandler('Cannot remove more than 100 items at once', 400));
+        }
+
+        // Validate each cart item ID
+        const mongoose = require('mongoose');
+        for (let i = 0; i < cartItems.length; i++) {
+            if (!mongoose.Types.ObjectId.isValid(cartItems[i])) {
+                return next(new ErrorHandler(`Invalid cart item ID at index ${i}`, 400));
+            }
+        }
+
+        // Remove multiple cart items
+        const result = await Cart.deleteMany({ 
+            _id: { $in: cartItems }, 
+            user: userId 
+        });
+
+        console.log(`Removed ${result.deletedCount} cart items for user ${userId}`);
+
+        if (result.deletedCount === 0) {
+            return next(new ErrorHandler('No cart items found or access denied', 404));
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: `${result.deletedCount} items removed from cart`,
+            removedCount: result.deletedCount
+        });
+
+    } catch (error) {
+        console.error('Error in removeMultipleFromCart:', error);
+        return next(new ErrorHandler(error.message || 'Failed to remove cart items', 500));
+    }
 });
 
 // Get user's cart
