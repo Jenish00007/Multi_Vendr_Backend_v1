@@ -79,6 +79,8 @@ router.post(
           userLocation, // Save user location in the order
           otp, // Save OTP in the order
           shop: shopId, // Add the shopId here
+          createdAt: new Date(), // Explicitly set current date and time
+          paidAt: new Date(), // Explicitly set current date and time
         });
         orders.push(order);
       }
@@ -187,7 +189,7 @@ router.put(
       order.status = req.body.status;
 
       if (req.body.status === "Delivered") {
-        order.deliveredAt = Date.now();
+        order.deliveredAt = new Date();
         order.paymentInfo.status = "Succeeded";
         const serviceCharge = order.totalPrice * 0.1;
         await updateSellerInfo(order.totalPrice - serviceCharge);
@@ -798,7 +800,7 @@ router.put(
 
       // Ensure deliveryMan field is preserved
       order.status = "Delivered";
-      order.deliveredAt = Date.now();
+      order.deliveredAt = new Date();
       order.deliveryMan = req.deliveryMan._id; // Explicitly set deliveryMan again
 
       console.log("Saving order with updates:", {
