@@ -86,14 +86,14 @@ const orderSchema = new mongoose.Schema({
   },
   paidAt: {
     type: Date,
-    default: Date.now(),
+    default: () => new Date(),
   },
   deliveredAt: {
     type: Date,
   },
   createdAt: {
     type: Date,
-    default: Date.now(),
+    default: () => new Date(),
   },
   otp: {
     type: String,
