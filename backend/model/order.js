@@ -47,6 +47,28 @@ const orderSchema = new mongoose.Schema({
     type: {
       type: String,
     },
+    // QR Code payment fields
+    qr_code_id: {
+      type: String,
+    },
+    qr_expires_at: {
+      type: Date,
+    },
+    qr_generated_at: {
+      type: Date,
+    },
+    confirmed_by: {
+      type: String, // Delivery man ID who confirmed payment
+    },
+    confirmed_at: {
+      type: Date,
+    },
+    confirmation_notes: {
+      type: String,
+    },
+    paid_at: {
+      type: Date,
+    }
   },
   userLocation: {
     latitude: {
