@@ -124,7 +124,7 @@ app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
 app.use("/v2/units", unitRoutes);
 
-// it'for errhendel
+// it's for error handling
 app.use(ErrorHandler);
 
 // Handling Uncaught Exceptions
