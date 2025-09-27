@@ -101,9 +101,7 @@ deliverymanSchema.methods.comparePassword = async function (enteredPassword) {
 
 // Generate JWT token
 deliverymanSchema.methods.getJwtToken = function () {
-    return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY, {
-        expiresIn: "7d" // Token expires in 7 days
-    });
+    return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY);
 };
 
 // Create index for geospatial queries

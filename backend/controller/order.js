@@ -79,8 +79,6 @@ router.post(
           userLocation, // Save user location in the order
           otp, // Save OTP in the order
           shop: shopId, // Add the shopId here
-          createdAt: new Date(), // Explicitly set current date and time
-          paidAt: new Date(), // Explicitly set current date and time
         });
         orders.push(order);
       }
@@ -148,21 +146,25 @@ router.get(
 );
 
 // get all orders of seller
-router.get(
-  "/get-seller-all-orders/:shopId",
-  catchAsyncErrors(async (req, res, next) => {
+router.get("/get-seller-all-orders/:shopId",catchAsyncErrors(async (req, res, next) => {
     try {
       const orders = await Order.find({
         "cart.shopId": req.params.shopId,
-      }).sort({
-        createdAt: -1,
-      });
+      })
+      .populate({
+        path: 'cart.product',
+        model: 'Product'
+      })
+      .populate('user._id')
+      .populate('deliveryMan')
+      .sort({createdAt: -1 });
 
       res.status(200).json({
         success: true,
         orders,
       });
     } catch (error) {
+      console.log('error in get-seller-all-orders', error)
       return next(new ErrorHandler(error.message, 500));
     }
   })
@@ -638,8 +640,6 @@ router.put(
          select: 'name address phone'
        })
        .populate('user', 'name phone');
-
-      console.log("After update - Order deliveryMan:", updatedOrder.deliveryMan);
 
       // Format the response
       const formattedOrder = {
