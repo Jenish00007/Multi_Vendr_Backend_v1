@@ -751,9 +751,6 @@ router.put(
   catchAsyncErrors(async (req, res, next) => {
     try {
       const { otp } = req.body;
-      console.log("Confirming delivery for order:", req.params.id);
-      console.log("DeliveryMan ID:", req.deliveryMan._id);
-      console.log("OTP provided:", otp);
 
       const order = await Order.findById(req.params.id)
         .populate('deliveryMan')
@@ -771,30 +768,17 @@ router.put(
         return next(new ErrorHandler("Order not found with this id", 404));
       }
 
-      console.log("Found order:", order ? "Yes" : "No");
-      console.log("Order deliveryMan (after populate):", order.deliveryMan);
-      console.log("Order status:", order.status);
-      console.log("Order OTP:", order.otp);
-
       // Verify this delivery man is assigned to the order
       if (!order.deliveryMan || order.deliveryMan._id.toString() !== req.deliveryMan._id.toString()) {
-        console.error("Delivery man mismatch (during check):");
-        console.error("  orderDeliveryMan._id:", order.deliveryMan?._id);
-        console.error("  requestDeliveryMan._id:", req.deliveryMan._id);
         return next(new ErrorHandler("You are not authorized to deliver this order", 403));
       }
 
       if (order.status !== "Out for delivery") {
-        console.error("Invalid order status:", order.status);
         return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}`, 400));
       }
 
       // OTP verification
       if (!order.otp || order.otp !== otp) {
-        console.error("OTP mismatch:", {
-          providedOTP: otp,
-          storedOTP: order.otp
-        });
         return next(new ErrorHandler("Invalid OTP", 400));
       }
 
@@ -803,18 +787,10 @@ router.put(
       order.deliveredAt = new Date();
       order.deliveryMan = req.deliveryMan._id; // Explicitly set deliveryMan again
 
-      console.log("Saving order with updates:", {
-        status: order.status,
-        deliveredAt: order.deliveredAt,
-        deliveryMan: order.deliveryMan
-      });
-
       await order.save({ validateBeforeSave: false });
 
       // Verify the save
       const savedOrder = await Order.findById(order._id);
-      console.log("After save - Order status:", savedOrder.status);
-      console.log("After save - Order deliveryMan:", savedOrder.deliveryMan);
 
       res.status(200).json({
         success: true,

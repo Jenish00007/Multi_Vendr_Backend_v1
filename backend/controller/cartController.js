@@ -1,91 +1,113 @@
 const Cart = require('../model/cart');
 const Product = require('../model/product');
+const Event = require('../model/event');
+const mongoose = require('mongoose');
 const catchAsyncErrors = require('../middleware/catchAsyncErrors');
 const ErrorHandler = require('../utils/ErrorHandler');
 
 // Add to cart
 exports.addToCart = catchAsyncErrors(async (req, res, next) => {
-    const { productId, quantity, selectedVariation } = req.body;
-    const userId = req.user._id;
+    try {
+        const { productId, quantity, selectedVariation } = req.body;
+        const userId = req.user._id;
+        console.log('what is the cart data here :', req.body)
 
-    // Input validation
-    const mongoose = require('mongoose');
-    if (!productId) {
-        return next(new ErrorHandler('Product ID is required', 400));
-    }
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-        return next(new ErrorHandler('Invalid product ID format', 400));
-    }
-    if (!quantity || quantity <= 0 || !Number.isInteger(Number(quantity))) {
-        return next(new ErrorHandler('Quantity must be a positive integer', 400));
-    }
-    if (Number(quantity) > 999) {
-        return next(new ErrorHandler('Quantity cannot exceed 999', 400));
-    }
+        // Input validation
+        if (!productId) {
+            return next(new ErrorHandler('Product ID is required', 400));
+        }
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return next(new ErrorHandler('Invalid product ID format', 400));
+        }
+        if (!quantity || quantity <= 0 || !Number.isInteger(Number(quantity))) {
+            return next(new ErrorHandler('Quantity must be a positive integer', 400));
+        }
+        if (Number(quantity) > 999) {
+            return next(new ErrorHandler('Quantity cannot exceed 999', 400));
+        }
 
-    // Check if product exists
-    const product = await Product.findById(productId);
-    if (!product) {
-        return next(new ErrorHandler('Product not found', 404));
-    }
-
-    // Check if product is in stock
-    if (product.stock < quantity) {
-        return next(new ErrorHandler(`Only ${product.stock} items available in stock`, 400));
-    }
-
-    // Check if product already in cart
-    let cartItem = await Cart.findOne({
-        user: userId,
-        product: productId,
-        selectedVariation: selectedVariation || null
-    });
-
-    if (cartItem) {
-        // Update quantity if product already in cart
-        cartItem.quantity = quantity;
-        await cartItem.save();
-    } else {
-        // Create new cart item
-        cartItem = await Cart.create({
+        const queryNewCart = {
             user: userId,
             product: productId,
             quantity,
             selectedVariation: selectedVariation || null
-        });
-    }
-
-    // Populate product details
-    cartItem = await Cart.findById(cartItem._id).populate({
-        path: 'product',
-        select: 'name price originalPrice discountPrice images description stock shopId shop'
-    });
-
-    // Calculate price details
-    const price = Number(cartItem.product.price) || 0;
-    const originalPrice = Number(cartItem.product.originalPrice) || price;
-    const itemSubtotal = price * quantity;
-    const itemOriginalTotal = originalPrice * quantity;
-    const itemDiscount = itemOriginalTotal - itemSubtotal;
-
-    const cartItemWithPrices = {
-        ...cartItem.toObject(),
-        itemSubtotal,
-        itemOriginalTotal,
-        itemDiscount,
-        priceDetails: {
-            unitPrice: price,
-            originalUnitPrice: originalPrice,
-            totalPrice: itemSubtotal,
-            totalOriginalPrice: itemOriginalTotal,
-            discountAmount: itemDiscount
         }
-    };
 
-    res.status(201).json({
-        success: true,
-        cartItem: cartItemWithPrices
-    });
+        // Check if product exists in Product collection first
+        let product = await Product.findById(productId);
+        let productType = 'Product';
+
+        // If not found in Product collection, check Event collection
+        if (!product) {
+            product = await Event.findById(productId);
+            productType = 'Event';
+        }
+
+        if (!product) {
+            return next(new ErrorHandler('Product not found', 404));
+        }
+
+        // Set product type and product ID for cart
+        queryNewCart.productType = productType;
+        queryNewCart.product = productId;
+
+        // Check if product is in stock
+        if (product.stock < quantity) {
+            return next(new ErrorHandler(`Only ${product.stock} items available in stock`, 400));
+        }
+
+        // Check if product already in cart
+        let cartItem = await Cart.findOne({
+            user: userId,
+            product: productId,
+            selectedVariation: selectedVariation || null
+        });
+
+        if (cartItem) {
+            // Update quantity if product already in cart
+            cartItem.quantity = quantity;
+            cartItem.productType = productType;
+            await cartItem.save();
+        } else {
+            // Create new cart item
+            cartItem = await Cart.create(queryNewCart);
+        }
+
+        // Populate product details
+        cartItem = await Cart.findById(cartItem._id).populate({
+            path: 'product',
+            select: 'name originalPrice discountPrice images description stock shopId shop'
+        });
+
+        // Calculate price details
+        const price = Number(cartItem.product.discountPrice) || 0;
+        const originalPrice = Number(cartItem.product.originalPrice) || price;
+        const itemSubtotal = price * quantity;
+        const itemOriginalTotal = originalPrice * quantity;
+        const itemDiscount = itemOriginalTotal - itemSubtotal;
+
+        const cartItemWithPrices = {
+            ...cartItem.toObject(),
+            itemSubtotal,
+            itemOriginalTotal,
+            itemDiscount,
+            priceDetails: {
+                unitPrice: price,
+                originalUnitPrice: originalPrice,
+                totalPrice: itemSubtotal,
+                totalOriginalPrice: itemOriginalTotal,
+                discountAmount: itemDiscount
+            }
+        };
+
+        res.status(201).json({
+            success: true,
+            cartItem: cartItemWithPrices
+        });
+    } catch (error) {
+        console.error('Error in addToCart:', error);
+        return next(new ErrorHandler(error.message || 'Failed to add to cart', 500));
+    }
 });
 
 // Update cart item quantity
@@ -114,8 +136,14 @@ exports.updateCartItem = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler('Cart item not found', 404));
     }
 
-    // Check if product is in stock
-    const product = await Product.findById(cartItem.product);
+    // Check if product is in stock based on product type
+    let product;
+    if (cartItem.productType === 'Product') {
+        product = await Product.findById(cartItem.product);
+    } else if (cartItem.productType === 'Event') {
+        product = await Event.findById(cartItem.product);
+    }
+
     if (!product) {
         return next(new ErrorHandler('Product not found', 404));
     }
@@ -149,9 +177,9 @@ exports.removeFromCart = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Find and remove the cart item
-        const cartItem = await Cart.findOneAndDelete({ 
-            _id: cartItemId, 
-            user: userId 
+        const cartItem = await Cart.findOneAndDelete({
+            _id: cartItemId,
+            user: userId
         });
 
         if (!cartItem) {
@@ -200,9 +228,9 @@ exports.removeMultipleFromCart = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Remove multiple cart items
-        const result = await Cart.deleteMany({ 
-            _id: { $in: cartItems }, 
-            user: userId 
+        const result = await Cart.deleteMany({
+            _id: { $in: cartItems },
+            user: userId
         });
 
         console.log(`Removed ${result.deletedCount} cart items for user ${userId}`);
@@ -211,8 +239,8 @@ exports.removeMultipleFromCart = catchAsyncErrors(async (req, res, next) => {
             return next(new ErrorHandler('No cart items found or access denied', 404));
         }
 
-        res.status(200).json({ 
-            success: true, 
+        res.status(200).json({
+            success: true,
             message: `${result.deletedCount} items removed from cart`,
             removedCount: result.deletedCount
         });
@@ -225,67 +253,75 @@ exports.removeMultipleFromCart = catchAsyncErrors(async (req, res, next) => {
 
 // Get user's cart
 exports.getCart = catchAsyncErrors(async (req, res, next) => {
-    const userId = req.user._id;
+    try {
+        const userId = req.user._id;
 
-    const cartItems = await Cart.find({ user: userId })
-        .populate({
-            path: 'product',
-            select: 'name price originalPrice discountPrice images description stock shopId shop'
+        const cartItems = await Cart.find({ user: userId })
+            .populate({
+                path: 'product',
+                select: 'name originalPrice discountPrice images description stock shopId shop'
+            });
+
+        const validCartItems = cartItems.filter(item => item.product !== null);
+
+        // Calculate totals
+        let subtotal = 0;
+        let totalDiscount = 0;
+        let total = 0;
+        let totalItems = 0;
+        let totalOriginalPrice = 0;
+
+        const itemsWithPrices = validCartItems.map(item => {
+
+            // Ensure price values are numbers
+            const price = Number(item?.product?.discountPrice) || 0;
+            const originalPrice = Number(item?.product?.originalPrice) || price;
+            const quantity = Number(item?.quantity) || 0;
+
+            const itemSubtotal = price * quantity;
+            const itemOriginalTotal = originalPrice * quantity;
+            const itemDiscount = itemOriginalTotal - itemSubtotal;
+            const itemTotal = itemSubtotal;
+
+            subtotal += itemSubtotal;
+            totalOriginalPrice += itemOriginalTotal;
+            totalDiscount += itemDiscount;
+            totalItems += quantity;
+
+            return {
+                ...item.toObject(),
+                itemSubtotal,
+                itemOriginalTotal,
+                itemDiscount,
+                itemTotal,
+                priceDetails: {
+                    unitPrice: price,
+                    originalUnitPrice: originalPrice,
+                    totalPrice: itemTotal,
+                    totalOriginalPrice: itemOriginalTotal,
+                    discountAmount: itemDiscount
+                }
+            };
         });
 
-    // Calculate totals
-    let subtotal = 0;
-    let totalDiscount = 0;
-    let total = 0;
-    let totalItems = 0;
-    let totalOriginalPrice = 0;
+        // Calculate final totals
+        total = subtotal;
 
-    const itemsWithPrices = cartItems.map(item => {
-        // Ensure price values are numbers
-        const price = Number(item.product.price) || 0;
-        const originalPrice = Number(item.product.originalPrice) || price;
-        const quantity = Number(item.quantity) || 0;
-
-        const itemSubtotal = price * quantity;
-        const itemOriginalTotal = originalPrice * quantity;
-        const itemDiscount = itemOriginalTotal - itemSubtotal;
-        const itemTotal = itemSubtotal;
-        
-        subtotal += itemSubtotal;
-        totalOriginalPrice += itemOriginalTotal;
-        totalDiscount += itemDiscount;
-        totalItems += quantity;
-
-        return {
-            ...item.toObject(),
-            itemSubtotal,
-            itemOriginalTotal,
-            itemDiscount,
-            itemTotal,
-            priceDetails: {
-                unitPrice: price,
-                originalUnitPrice: originalPrice,
-                totalPrice: itemTotal,
-                totalOriginalPrice: itemOriginalTotal,
-                discountAmount: itemDiscount
+        res.status(200).json({
+            success: true,
+            cartItems: itemsWithPrices,
+            priceSummary: {
+                totalItems,
+                subtotal: Number(subtotal.toFixed(2)),
+                totalOriginalPrice: Number(totalOriginalPrice.toFixed(2)),
+                totalDiscount: Number(totalDiscount.toFixed(2)),
+                total: Number(total.toFixed(2)),
+                currency: "INR",
+                savings: Number(totalDiscount.toFixed(2))
             }
-        };
-    });
-
-    // Calculate final totals
-    total = subtotal;
-
-    res.status(200).json({
-        success: true,
-        cartItems: itemsWithPrices,
-        priceSummary: {
-            totalItems,
-            subtotal: Number(subtotal.toFixed(2)),
-            totalOriginalPrice: Number(totalOriginalPrice.toFixed(2)),
-            totalDiscount: Number(totalDiscount.toFixed(2)),
-            total: Number(total.toFixed(2)),
-            currency: "INR",
-            savings: Number(totalDiscount.toFixed(2))
-        }
-    });
+        });
+    } catch (error) {
+        console.error('Error in getCart:', error);
+        return next(new ErrorHandler(error.message || 'Failed to get cart', 500));
+    }
 }); 
