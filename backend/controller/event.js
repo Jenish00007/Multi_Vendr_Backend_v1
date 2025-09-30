@@ -69,6 +69,7 @@ router.post(
       const eventData = req.body;
       eventData.images = imageUrls;
       eventData.isAdminEvent = true;
+      eventData.shopId = '683fdb32b96623fb63790305';
 
       // Validate required fields
       const requiredFields = ['name', 'description', 'category', 'originalPrice', 'discountPrice', 'stock', 'start_Date', 'Finish_Date'];
