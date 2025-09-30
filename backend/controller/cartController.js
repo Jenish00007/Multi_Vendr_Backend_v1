@@ -1,5 +1,6 @@
 const Cart = require('../model/cart');
 const Product = require('../model/product');
+const Event = require('../model/event');
 const catchAsyncErrors = require('../middleware/catchAsyncErrors');
 const ErrorHandler = require('../utils/ErrorHandler');
 
@@ -25,7 +26,10 @@ exports.addToCart = catchAsyncErrors(async (req, res, next) => {
 
     // Check if product exists
     const product = await Product.findById(productId);
-    if (!product) {
+console.log('what are the data :', productId, shopId)
+    const eventProduct = await Event.findOne({ _id: productId, shopId: shopId });
+
+    if(!product || !eventProduct){ 
         return next(new ErrorHandler('Product not found', 404));
     }
 
