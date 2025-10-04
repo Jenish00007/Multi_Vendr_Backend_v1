@@ -99,6 +99,28 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  cancelledAt: {
+    type: Date,
+  },
+  cancellationReason: {
+    type: String,
+  },
+  cancelledBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  ignored_by: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryMan'
+  }],
+  delivery_instruction: {
+    type: String,
+    default: ''
+  },
+  store: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Shop'
+  }
 });
 
 // Add indexes for better query performance
@@ -106,5 +128,6 @@ orderSchema.index({ "user._id": 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ shop: 1 });
 orderSchema.index({ deliveryMan: 1 });
+orderSchema.index({ status: 1 });
 
 module.exports = mongoose.model("Order", orderSchema);
