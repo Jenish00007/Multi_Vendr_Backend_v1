@@ -804,4 +804,128 @@ router.put(
   })
 );
 
+// cancel order by user
+router.put(
+  "/cancel-order/:id",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { cancellationReason } = req.body;
+
+      // Validate order ID
+      if (!req.params.id || req.params.id === 'undefined') {
+        return next(new ErrorHandler("Invalid order ID", 400));
+      }
+
+      const order = await Order.findById(req.params.id)
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice stock sold_out'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name address phone'
+        });
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      // Check if the order belongs to the authenticated user
+      if (order.user._id.toString() !== req.user._id.toString()) {
+        return next(new ErrorHandler("You are not authorized to cancel this order", 403));
+      }
+
+      // Check if order can be cancelled
+      const cancellableStatuses = ["Processing", "Transferred to delivery partner"];
+      if (!cancellableStatuses.includes(order.status)) {
+        return next(new ErrorHandler(`Order cannot be cancelled in its current state: ${order.status}. Only orders in "Processing" or "Transferred to delivery partner" status can be cancelled.`, 400));
+      }
+
+      // Check if order is already cancelled
+      if (order.status === "Cancelled") {
+        return next(new ErrorHandler("Order is already cancelled", 400));
+      }
+
+      // Store previous status for notification
+      const previousStatus = order.status;
+
+      // Update order status to cancelled
+      order.status = "Cancelled";
+      order.cancelledAt = new Date();
+      order.cancellationReason = cancellationReason || "Cancelled by user";
+      order.cancelledBy = req.user._id;
+
+      // Restore product stock if items were already deducted
+      if (previousStatus === "Transferred to delivery partner") {
+        for (const item of order.cart) {
+          try {
+            const product = await Product.findById(item.product._id);
+            if (product) {
+              product.stock += item.quantity;
+              product.sold_out = Math.max(0, product.sold_out - item.quantity);
+              await product.save({ validateBeforeSave: false });
+            }
+          } catch (productError) {
+            console.error(`Error updating product ${item.product._id}:`, productError);
+            // Continue with other products even if one fails
+          }
+        }
+      }
+
+      await order.save({ validateBeforeSave: false });
+
+      // Create notification for order cancellation
+      try {
+        await createOrderNotification(
+          order.user,
+          order._id,
+          "Order Cancelled",
+          `Your order #${order._id.toString().slice(-6).toUpperCase()} has been cancelled successfully.`,
+          { 
+            previousStatus, 
+            newStatus: "Cancelled",
+            cancellationReason: order.cancellationReason,
+            cancelledBy: "user"
+          }
+        );
+      } catch (notificationError) {
+        console.error("Error creating cancellation notification:", notificationError);
+        // Don't fail the cancellation if notification fails
+      }
+
+      // Format the response
+      const formattedOrder = {
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        cancelledAt: order.cancelledAt,
+        cancellationReason: order.cancellationReason,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+          _id: item._id,
+          name: item.name || item.product?.name || "Product not found",
+          quantity: item.quantity,
+          price: item.price,
+          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
+          shopName: item.shopId?.name || "Shop not found",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
+      };
+
+      res.status(200).json({
+        success: true,
+        message: "Order cancelled successfully",
+        order: formattedOrder,
+      });
+    } catch (error) {
+      console.error("Error in cancel-order:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 module.exports = router;
