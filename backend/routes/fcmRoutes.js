@@ -74,7 +74,11 @@ router.post("/test-new-order-notification", async (req, res) => {
 
     // Find the order
     const order = await Order.findById(orderId)
-      .populate('cart.shopId', 'name')
+      .populate({
+        path: 'cart.shopId',
+        select: 'name address phone'
+      })
+      .populate('shop', 'name address phone')
       .populate('user', 'name phone');
 
     if (!order) {
@@ -93,7 +97,7 @@ router.post("/test-new-order-notification", async (req, res) => {
       result: result,
       orderDetails: {
         orderId: order._id,
-        shopName: order.cart[0]?.shopId?.name || 'Unknown',
+        shopName: order.shop?.name || order.cart[0]?.shopId?.name || 'Unknown',
         totalPrice: order.totalPrice,
         totalItems: order.cart.reduce((total, item) => total + item.quantity, 0)
       }

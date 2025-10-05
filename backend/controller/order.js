@@ -126,7 +126,15 @@ router.post(
       // Send FCM notifications to deliverymen for each order
       for (const order of orders) {
         try {
-          await sendFCMNotificationToDeliverymen(order);
+          // Populate the order with shop information before sending notification
+          const populatedOrder = await Order.findById(order._id)
+            .populate({
+              path: 'cart.shopId',
+              select: 'name address phone'
+            })
+            .populate('shop', 'name address phone');
+          
+          await sendFCMNotificationToDeliverymen(populatedOrder);
         } catch (notificationError) {
           console.error("Error sending FCM notification for order:", order._id, notificationError);
           // Don't fail the order creation if notification fails
@@ -562,7 +570,7 @@ router.get(
 
       const orders = await Order.find({ 
         deliveryMan: deliveryManId,
-        status: { $in: ["Delivered", "Shipping"] }
+        status: { $in: ["Delivered", "Shipping", "Cancelled", "Cancelled by user", "Cancelled by deliveryman"] }
       })
         .sort({ createdAt: -1 })
         .populate('deliveryMan')
@@ -794,15 +802,18 @@ router.put(
   })
 );
 
-// confirm order delivery by deliveryman with OTP
+// confirm order delivery by deliveryman (without OTP requirement)
 router.put(
   "/deliveryman/confirm-delivery/:id",
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const { otp } = req.body;
+      const orderId = req.params.id;
+      const deliveryManId = req.deliveryMan._id;
 
-      const order = await Order.findById(req.params.id)
+      console.log(`Delivery confirmation attempt - Order ID: ${orderId}, DeliveryMan ID: ${deliveryManId}`);
+
+      const order = await Order.findById(orderId)
         .populate('deliveryMan')
         .populate({
           path: 'cart.product',
@@ -815,24 +826,28 @@ router.put(
         .populate('user', 'name phone');
 
       if (!order) {
+        console.log(`Order not found with ID: ${orderId}`);
         return next(new ErrorHandler("Order not found with this id", 404));
       }
+
+      console.log(`Order found - Status: ${order.status}, DeliveryMan: ${order.deliveryMan?._id}`);
 
       // Verify this delivery man is assigned to the order
       if (!order.deliveryMan || order.deliveryMan._id.toString() !== req.deliveryMan._id.toString()) {
         return next(new ErrorHandler("You are not authorized to deliver this order", 403));
       }
 
+      // Check if order is already delivered
+      if (order.status === "Delivered") {
+        return next(new ErrorHandler("Order has already been delivered and confirmed", 400));
+      }
+
+      // Check if order is in the correct state for delivery confirmation
       if (order.status !== "Out for delivery") {
-        return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}`, 400));
+        return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}. Order must be 'Out for delivery' to confirm delivery.`, 400));
       }
 
-      // OTP verification
-      if (!order.otp || order.otp !== otp) {
-        return next(new ErrorHandler("Invalid OTP", 400));
-      }
-
-      // Ensure deliveryMan field is preserved
+      // Update order status to delivered (no OTP verification required)
       order.status = "Delivered";
       order.deliveredAt = new Date();
       order.deliveryMan = req.deliveryMan._id; // Explicitly set deliveryMan again
@@ -849,6 +864,132 @@ router.put(
       });
     } catch (error) {
       console.error("Error in confirm-delivery:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// cancel order by deliveryman
+router.put(
+  "/deliveryman/cancel-order/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { cancellationReason } = req.body;
+
+      // Validate order ID
+      if (!req.params.id || req.params.id === 'undefined') {
+        return next(new ErrorHandler("Invalid order ID", 400));
+      }
+
+      const order = await Order.findById(req.params.id)
+        .populate({
+          path: 'cart.product',
+          select: 'name images price discountPrice stock sold_out'
+        })
+        .populate({
+          path: 'cart.shopId',
+          select: 'name address phone'
+        })
+        .populate('user', 'name phone');
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      // Check if the order is assigned to this deliveryman
+      if (!order.deliveryMan || order.deliveryMan.toString() !== req.deliveryMan._id.toString()) {
+        return next(new ErrorHandler("You are not authorized to cancel this order", 403));
+      }
+
+      // Check if order can be cancelled by deliveryman
+      const cancellableStatuses = ["Out for delivery", "Processing"];
+      if (!cancellableStatuses.includes(order.status)) {
+        return next(new ErrorHandler(`Order cannot be cancelled in its current state: ${order.status}. Only orders in "Out for delivery" or "Processing" status can be cancelled by deliveryman.`, 400));
+      }
+
+      // Check if order is already cancelled
+      if (order.status === "Cancelled" || order.status === "Cancelled by deliveryman") {
+        return next(new ErrorHandler("Order is already cancelled", 400));
+      }
+
+      // Store previous status for notification
+      const previousStatus = order.status;
+
+      // Update order status to cancelled by deliveryman
+      order.status = "Cancelled by deliveryman";
+      order.cancelledAt = new Date();
+      order.cancellationReason = cancellationReason || "Cancelled by deliveryman";
+      order.cancelledBy = req.deliveryMan._id;
+      order.deliveryMan = null; // Remove deliveryman assignment
+
+      // Restore product stock if items were already deducted
+      if (previousStatus === "Out for delivery") {
+        for (const item of order.cart) {
+          try {
+            const product = await Product.findById(item.product._id);
+            if (product) {
+              product.stock += item.quantity;
+              product.sold_out = Math.max(0, product.sold_out - item.quantity);
+              await product.save({ validateBeforeSave: false });
+            }
+          } catch (productError) {
+            console.error(`Error updating product ${item.product._id}:`, productError);
+            // Continue with other products even if one fails
+          }
+        }
+      }
+
+      await order.save({ validateBeforeSave: false });
+
+      // Create notification for order cancellation
+      try {
+        await createOrderNotification(
+          order.user,
+          order._id,
+          "Order Cancelled by Deliveryman",
+          `Your order #${order._id.toString().slice(-6).toUpperCase()} has been cancelled by the deliveryman.`,
+          { 
+            previousStatus, 
+            newStatus: "Cancelled by deliveryman",
+            cancellationReason: order.cancellationReason,
+            cancelledBy: "deliveryman"
+          }
+        );
+      } catch (notificationError) {
+        console.error("Error creating cancellation notification:", notificationError);
+        // Don't fail the cancellation if notification fails
+      }
+
+      // Format the response
+      const formattedOrder = {
+        _id: order._id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        cancelledAt: order.cancelledAt,
+        cancellationReason: order.cancellationReason,
+        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
+        items: order.cart.map((item) => ({
+          _id: item._id,
+          name: item.name || item.product?.name || "Product not found",
+          quantity: item.quantity,
+          price: item.price,
+          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
+          shopName: item.shopId?.name || "Shop not found",
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentInfo: order.paymentInfo,
+        userLocation: order.userLocation || null,
+      };
+
+      res.status(200).json({
+        success: true,
+        message: "Order cancelled successfully by deliveryman",
+        order: formattedOrder,
+      });
+    } catch (error) {
+      console.error("Error in deliveryman cancel-order:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
