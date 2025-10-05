@@ -97,7 +97,10 @@ userSchema.methods.getJwtToken = function () {
       role: this.role,
       isPhoneVerified: this.isPhoneVerified
     }, 
-    process.env.JWT_SECRET_KEY
+    process.env.JWT_SECRET_KEY, 
+    {
+      expiresIn: process.env.JWT_EXPIRES,
+    }
   );
 };
 

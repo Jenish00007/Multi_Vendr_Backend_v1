@@ -122,6 +122,23 @@ const shopSchema = new mongoose.Schema({
       },
     },
   ],
+  // Delivery radius configuration
+  deliveryRadius: {
+    enabled: {
+      type: Boolean,
+      default: true
+    },
+    maxRadius: {
+      type: Number,
+      default: 10, // 10km default radius
+      min: 1,
+      max: 50
+    },
+    customRadius: {
+      type: Number,
+      default: null // If null, uses maxRadius
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now(),
@@ -143,7 +160,9 @@ shopSchema.pre("save", async function (next) {
 
 // jwt token
 shopSchema.methods.getJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY);
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY, {
+    expiresIn: process.env.JWT_EXPIRES,
+  });
 };
 
 // comapre password

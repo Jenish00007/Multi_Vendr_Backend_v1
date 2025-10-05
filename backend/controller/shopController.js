@@ -1,6 +1,5 @@
 const Shop = require("../model/shop");
 const Product = require("../model/product");
-const Category = require("../model/Category");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const ErrorHandler = require("../utils/ErrorHandler");
 
@@ -22,7 +21,7 @@ exports.getPopularShops = catchAsyncErrors(async (req, res, next) => {
       }
     },
     {
-      $sort: {
+      $sort: { 
         totalProducts: -1,
         averageRating: -1
       }
@@ -242,70 +241,7 @@ exports.getAllStores = catchAsyncErrors(async (req, res, next) => {
     currentPage: Math.floor(skip / limitValue) + 1,
     totalPages: Math.ceil(total / limitValue)
   });
-});
-
-// Get categories by shop id
-exports.getCategoriesByShopId = catchAsyncErrors(async (req, res, next) => {
-  const { shopId } = req.params;
-  const { offset = 0, limit = 20 } = req.query;
-
-  if (!shopId) {
-    return next(new ErrorHandler('Shop ID is required', 400));
-  }
-
-  const shop = await Shop.findById(shopId);
-
-  if (!shop) {
-    return next(new ErrorHandler('Shop not found', 404));
-  }
-  
-  // get categories from products of this shop
-  const categories = await Product.distinct("category", { shopId })
-    .populate('category')
-    .lean();
-  
-  const getCategoryDetails = await Category.find({ _id: { $in: categories } })
-    .skip(parseInt(offset))
-    .limit(parseInt(limit))
-    .lean();
-
-  const countCategories = categories.length;
-
-  res.status(200).json({
-    success: true,
-    shop: shop,
-    categories: getCategoryDetails,
-    total: countCategories,
-    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-    totalPages: Math.ceil(countCategories / parseInt(limit))
-  });
-
-});
-
-exports.getProductsByShopCategories = catchAsyncErrors(async (req, res, next) => {
-  const { shopId, categoryId } = req.params;
-  const { offset = 0, limit = 20 } = req.query;
-  if (!shopId || !categoryId) {
-    return next(new ErrorHandler('Shop ID and Category ID are required', 400));
-  }
-
-  const products = await Product.find({ shopId, category: categoryId })
-    .populate('category')
-    .sort({createdAt: -1})
-    .lean()
-    .skip(parseInt(offset))
-    .limit(parseInt(limit));
-
-  const total = await Product.countDocuments({ shopId, category: categoryId });
-
-  res.status(200).json({
-    success: true,
-    products,
-    total,
-    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-    totalPages: Math.ceil(total / parseInt(limit))
-  });
-});
+}); 
 
 // Update Expo push notification token for shop
 exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {

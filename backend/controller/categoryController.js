@@ -64,6 +64,11 @@ exports.getAllCategories = async (req, res) => {
     try {
         const categories = await Category.find().populate('module');
         
+        console.log('Backend: Found', categories.length, 'categories');
+        categories.forEach((category, index) => {
+            console.log(`Backend Category ${index}: ${category.name} - Image: ${category.image}`);
+        });
+        
         res.status(200).json({
             success: true,
             data: categories
