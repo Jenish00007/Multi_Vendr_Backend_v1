@@ -1,54 +1,58 @@
 const express = require("express");
-const admin = require("firebase-admin");
 const router = express.Router();
+const { sendFCMNotification, sendFCMNotificationToMultiple } = require("../utils/fcmService");
 const { sendNewOrderNotificationToDeliverymen } = require("../utils/pushNotification");
 const Order = require("../model/order");
-
-// Initialize Firebase Admin once
-if (!admin.apps.length) {
-  const serviceAccount = require("../config/firebase-service-account.json");
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
 
 // ✅ POST API to send notification
 router.post("/send", async (req, res) => {
   try {
-    const { fcmToken, title, body } = req.body;
+    const { fcmToken, title, body, data } = req.body;
 
-    if (!fcmToken || !title || !body) {
+    const result = await sendFCMNotification(fcmToken, title, body, data);
+
+    if (result.success) {
+      return res.status(200).json({
+        success: true,
+        messageId: result.messageId,
+      });
+    } else {
       return res.status(400).json({
         success: false,
-        error: "fcmToken, title, and body are required",
+        error: result.error,
       });
     }
-
-    const message = {
-      token: fcmToken,
-      notification: {
-        title,
-        body,
-      },
-      android: {
-        priority: "high",
-      },
-      apns: {
-        payload: {
-          aps: { sound: "default" },
-        },
-      },
-    };
-
-    const response = await admin.messaging().send(message);
-
-    return res.status(200).json({
-      success: true,
-      messageId: response,
-    });
   } catch (error) {
     console.error("❌ Error sending notification:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// ✅ POST API to send notification to multiple devices
+router.post("/send-multiple", async (req, res) => {
+  try {
+    const { fcmTokens, title, body, data } = req.body;
+
+    const result = await sendFCMNotificationToMultiple(fcmTokens, title, body, data);
+
+    if (result.success) {
+      return res.status(200).json({
+        success: true,
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+        totalSent: result.totalSent,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error sending multiple notifications:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
