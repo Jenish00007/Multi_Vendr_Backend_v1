@@ -96,3 +96,4 @@ const testFCMNotification = async () => {
 
 // Run the test
 testFCMNotification();
+

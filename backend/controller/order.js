@@ -8,7 +8,7 @@ const Shop = require("../model/shop");
 const Product = require("../model/product");
 const DeliveryMan = require("../model/deliveryman");
 const { createOrderNotification } = require("../utils/notificationHelper");
-const axios = require("axios");
+const { sendFCMNotificationToDeliverymen: sendFCMToDeliverymen } = require("../utils/fcmService");
 
 // Function to send FCM notifications to deliverymen
 const sendFCMNotificationToDeliverymen = async (order) => {
@@ -18,7 +18,7 @@ const sendFCMNotificationToDeliverymen = async (order) => {
       isAvailable: true,
       isApproved: true,
       expoPushToken: { $exists: true, $ne: null, $ne: '' }
-    }).select('expoPushToken name');
+    }).select('expoPushToken name _id');
 
     if (availableDeliverymen.length === 0) {
       console.log('No available deliverymen with FCM tokens found');
@@ -28,62 +28,9 @@ const sendFCMNotificationToDeliverymen = async (order) => {
       };
     }
 
-    // Create notification content
-    const orderNumber = order._id.toString().slice(-6).toUpperCase();
-    const shopName = order.cart && order.cart.length > 0 ? order.cart[0].shopId?.name || 'Unknown Shop' : 'Unknown Shop';
-    const totalItems = order.cart ? order.cart.reduce((total, item) => total + item.quantity, 0) : 0;
-    
-    const title = `New Order Available - #${orderNumber}`;
-    const body = `Order from ${shopName} - ${totalItems} items - ₹${order.totalPrice}`;
-
-    console.log(`Sending FCM notifications to ${availableDeliverymen.length} deliverymen for order: ${orderNumber}`);
-
-    // Send FCM notifications to each deliveryman
-    const results = [];
-    for (const deliveryman of availableDeliverymen) {
-      try {
-        const response = await axios.post('https://qauds.in/api/v2/fcm/send', {
-          fcmToken: deliveryman.expoPushToken,
-          title: title,
-          body: body
-        });
-
-        if (response.data.success) {
-          console.log(`FCM notification sent successfully to deliveryman: ${deliveryman.name}`);
-          results.push({
-            deliverymanId: deliveryman._id,
-            deliverymanName: deliveryman.name,
-            success: true
-          });
-        } else {
-          console.error(`Failed to send FCM notification to deliveryman: ${deliveryman.name}`, response.data.error);
-          results.push({
-            deliverymanId: deliveryman._id,
-            deliverymanName: deliveryman.name,
-            success: false,
-            error: response.data.error
-          });
-        }
-      } catch (error) {
-        console.error(`Error sending FCM notification to deliveryman: ${deliveryman.name}`, error.message);
-        results.push({
-          deliverymanId: deliveryman._id,
-          deliverymanName: deliveryman.name,
-          success: false,
-          error: error.message
-        });
-      }
-    }
-
-    const successCount = results.filter(r => r.success).length;
-    console.log(`FCM notification results: ${successCount}/${results.length} successful`);
-
-    return {
-      success: true,
-      totalSent: availableDeliverymen.length,
-      successCount: successCount,
-      results: results
-    };
+    // Use the new FCM service
+    const result = await sendFCMToDeliverymen(availableDeliverymen, order);
+    return result;
 
   } catch (error) {
     console.error('Error sending FCM notifications to deliverymen:', error);
