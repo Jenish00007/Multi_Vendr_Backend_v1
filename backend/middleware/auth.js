@@ -13,6 +13,7 @@ exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
   }
 
   const token = authHeader.split(' ')[1];
+  console.log('what is the token :', token)
   if (!token) {
     return next(new ErrorHandler("Please login to continue", 401));
   }

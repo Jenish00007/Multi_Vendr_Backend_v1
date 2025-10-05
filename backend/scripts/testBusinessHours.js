@@ -23,7 +23,7 @@ const testBusinessHours = async () => {
       email: 'test@shop.com',
       password: 'password123',
       address: '123 Test Street',
-      phoneNumber: 9591727966,
+      phoneNumber: 1234567890,
       zipCode: 12345,
       avatar: 'test-avatar.jpg',
       location: {

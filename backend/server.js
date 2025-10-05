@@ -70,7 +70,7 @@ const conversation = require("./controller/conversation");
 const withdraw = require("./controller/withdraw");
 const deliveryman = require("./controller/deliveryman");
 const notification = require("./controller/notification");
-const fcmRoutes = require("./routes/fcmRoutes");
+
 // New routes
 const moduleRoutes = require("./routes/moduleRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -90,7 +90,6 @@ const configurationRoutes = require("./routes/configurationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const deliverymanRoutes = require("./routes/deliveryman");
 const unitRoutes = require("./routes/unitRoutes");
-const deliveryRoutes = require("./controller/deliveryController");
 
 // end points
 app.use("/v2/withdraw", withdraw);
@@ -124,9 +123,8 @@ app.use("/v2/settings", configurationRoutes);
 app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
 app.use("/v2/units", unitRoutes);
-app.use("/v2/delivery", deliveryRoutes);
-app.use("/v2/fcm", fcmRoutes);
-// it'for errhendel
+
+// it's for error handling
 app.use(ErrorHandler);
 
 // Handling Uncaught Exceptions

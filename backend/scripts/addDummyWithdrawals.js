@@ -56,7 +56,7 @@ const addDummyWithdrawals = async () => {
           amount: amount,
           status: status,
           bankName: shop.withdrawMethod?.bankName || 'Sample Bank',
-          bankAccountNumber: shop.withdrawMethod?.accountNumber || '9591727966',
+          bankAccountNumber: shop.withdrawMethod?.accountNumber || '1234567890',
           bankIfscCode: shop.withdrawMethod?.ifscCode || 'SAMPLE123',
           paymentMethod: 'Bank Transfer',
           processingFee: Math.floor(amount * 0.02), // 2% processing fee

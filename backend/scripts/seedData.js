@@ -62,7 +62,7 @@ const seedData = async () => {
         name: "Fashion Store",
         description: "Your one-stop fashion destination",
         address: "123 Fashion Street",
-        phoneNumber: "9591727966",
+        phoneNumber: "1234567890",
         email: "fashion@store.com",
         zipCode: "12345",
         avatar: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
@@ -233,7 +233,7 @@ const seedData = async () => {
         status: "Processing",
         bankInfo: {
           bankName: "Sample Bank",
-          accountNumber: "9591727966",
+          accountNumber: "1234567890",
           accountHolderName: "Jane Smith"
         }
       }
