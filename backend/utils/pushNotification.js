@@ -260,7 +260,15 @@ const sendNewOrderNotificationToDeliverymen = async (order) => {
 
     // Create notification content
     const orderNumber = order._id.toString().slice(-6).toUpperCase();
-    const shopName = order.cart && order.cart.length > 0 ? order.cart[0].shopId?.name || 'Unknown Shop' : 'Unknown Shop';
+    
+    // Try to get shop name from populated shop field first, then from cart items
+    let shopName = 'Unknown Shop';
+    if (order.shop && order.shop.name) {
+      shopName = order.shop.name;
+    } else if (order.cart && order.cart.length > 0 && order.cart[0].shopId && order.cart[0].shopId.name) {
+      shopName = order.cart[0].shopId.name;
+    }
+    
     const totalItems = order.cart ? order.cart.reduce((total, item) => total + item.quantity, 0) : 0;
     
     const title = `New Order Available - #${orderNumber}`;
