@@ -7,11 +7,14 @@ const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
 const { createOrderNotification } = require("../utils/notificationHelper");
+const { validateDeliveryRadius } = require("../middleware/deliveryValidation");
+const { sendNewOrderNotificationToDeliverymen } = require("../utils/pushNotification");
 
 // create new order
 router.post(
   "/create-order",
   isAuthenticated,
+  validateDeliveryRadius,
   catchAsyncErrors(async (req, res, next) => {
     try {
       const { cart, shippingAddress, totalPrice, paymentInfo, userLocation } = req.body;
@@ -83,6 +86,24 @@ router.post(
         orders.push(order);
       }
 
+      // Send push notifications to available deliverymen for each order
+      for (const order of orders) {
+        try {
+          console.log(`Sending push notification for order: ${order._id}`);
+          const notificationResult = await sendNewOrderNotificationToDeliverymen(order);
+          
+          if (notificationResult.success) {
+            console.log(`✅ Push notification sent successfully for order ${order._id}`);
+            console.log(`   Sent to ${notificationResult.successCount || 0} deliverymen`);
+          } else {
+            console.log(`❌ Failed to send push notification for order ${order._id}:`, notificationResult.error);
+          }
+        } catch (notificationError) {
+          console.error(`❌ Error sending push notification for order ${order._id}:`, notificationError);
+          // Don't fail the order creation if notification fails
+        }
+      }
+
       res.status(201).json({
         success: true,
         orders,
@@ -146,25 +167,91 @@ router.get(
 );
 
 // get all orders of seller
-router.get("/get-seller-all-orders/:shopId",catchAsyncErrors(async (req, res, next) => {
+router.get(
+  "/get-seller-all-orders/:shopId",
+  catchAsyncErrors(async (req, res, next) => {
     try {
       const orders = await Order.find({
         "cart.shopId": req.params.shopId,
-      })
-      .populate({
-        path: 'cart.product',
-        model: 'Product'
-      })
-      .populate('user._id')
-      .populate('deliveryMan')
-      .sort({createdAt: -1 });
+      }).sort({
+        createdAt: -1,
+      });
 
       res.status(200).json({
         success: true,
         orders,
       });
     } catch (error) {
-      console.log('error in get-seller-all-orders', error)
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// get unique customers by shop
+router.get(
+  "/get-customers-by-shop/:shopId",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { shopId } = req.params;
+      const User = require("../model/user");
+
+      // Use aggregation to compute unique customers who ordered from this shop
+      const customersAgg = await Order.aggregate([
+        {
+          $match: {
+            $or: [
+              { "cart.shopId": shopId },
+              { shop: { $eq: require("mongoose").Types.ObjectId.isValid(shopId) ? require("mongoose").Types.ObjectId(shopId) : shopId } }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: "$user._id",
+            totalOrders: { $sum: 1 },
+            totalSpent: { $sum: "$totalPrice" },
+            lastOrderDate: { $max: "$createdAt" }
+          }
+        },
+        { $sort: { totalSpent: -1 } }
+      ]);
+
+      // Get user IDs from aggregation results
+      const userIds = customersAgg.map(c => c._id);
+
+      // Fetch complete user details
+      const users = await User.find({ _id: { $in: userIds } })
+        .select('name email phoneNumber avatar addresses role createdAt isPhoneVerified');
+
+      // Create a map for quick lookup
+      const userMap = new Map();
+      users.forEach(user => {
+        userMap.set(user._id.toString(), user);
+      });
+
+      // Combine aggregation results with user details
+      const customers = customersAgg.map((c) => {
+        const user = userMap.get(c._id.toString());
+        return {
+          _id: c._id,
+          name: user?.name || "Unknown Customer",
+          email: user?.email || "",
+          phone: user?.phoneNumber || "",
+          avatar: user?.avatar || null,
+          addresses: user?.addresses || [],
+          role: user?.role || "user",
+          createdAt: user?.createdAt || null,
+          isPhoneVerified: user?.isPhoneVerified || false,
+          totalOrders: c.totalOrders || 0,
+          totalSpent: c.totalSpent || 0,
+          lastOrderDate: c.lastOrderDate || null,
+          profileImage: user?.avatar || null
+        };
+      });
+
+      return res.status(200).json({ success: true, customers });
+    } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   })
@@ -191,7 +278,7 @@ router.put(
       order.status = req.body.status;
 
       if (req.body.status === "Delivered") {
-        order.deliveredAt = new Date();
+        order.deliveredAt = Date.now();
         order.paymentInfo.status = "Succeeded";
         const serviceCharge = order.totalPrice * 0.1;
         await updateSellerInfo(order.totalPrice - serviceCharge);
@@ -641,6 +728,8 @@ router.put(
        })
        .populate('user', 'name phone');
 
+      console.log("After update - Order deliveryMan:", updatedOrder.deliveryMan);
+
       // Format the response
       const formattedOrder = {
         _id: updatedOrder._id,
@@ -751,6 +840,9 @@ router.put(
   catchAsyncErrors(async (req, res, next) => {
     try {
       const { otp } = req.body;
+      console.log("Confirming delivery for order:", req.params.id);
+      console.log("DeliveryMan ID:", req.deliveryMan._id);
+      console.log("OTP provided:", otp);
 
       const order = await Order.findById(req.params.id)
         .populate('deliveryMan')
@@ -768,29 +860,50 @@ router.put(
         return next(new ErrorHandler("Order not found with this id", 404));
       }
 
+      console.log("Found order:", order ? "Yes" : "No");
+      console.log("Order deliveryMan (after populate):", order.deliveryMan);
+      console.log("Order status:", order.status);
+      console.log("Order OTP:", order.otp);
+
       // Verify this delivery man is assigned to the order
       if (!order.deliveryMan || order.deliveryMan._id.toString() !== req.deliveryMan._id.toString()) {
+        console.error("Delivery man mismatch (during check):");
+        console.error("  orderDeliveryMan._id:", order.deliveryMan?._id);
+        console.error("  requestDeliveryMan._id:", req.deliveryMan._id);
         return next(new ErrorHandler("You are not authorized to deliver this order", 403));
       }
 
       if (order.status !== "Out for delivery") {
+        console.error("Invalid order status:", order.status);
         return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}`, 400));
       }
 
       // OTP verification
       if (!order.otp || order.otp !== otp) {
+        console.error("OTP mismatch:", {
+          providedOTP: otp,
+          storedOTP: order.otp
+        });
         return next(new ErrorHandler("Invalid OTP", 400));
       }
 
       // Ensure deliveryMan field is preserved
       order.status = "Delivered";
-      order.deliveredAt = new Date();
+      order.deliveredAt = Date.now();
       order.deliveryMan = req.deliveryMan._id; // Explicitly set deliveryMan again
+
+      console.log("Saving order with updates:", {
+        status: order.status,
+        deliveredAt: order.deliveredAt,
+        deliveryMan: order.deliveryMan
+      });
 
       await order.save({ validateBeforeSave: false });
 
       // Verify the save
       const savedOrder = await Order.findById(order._id);
+      console.log("After save - Order status:", savedOrder.status);
+      console.log("After save - Order deliveryMan:", savedOrder.deliveryMan);
 
       res.status(200).json({
         success: true,
@@ -799,130 +912,6 @@ router.put(
       });
     } catch (error) {
       console.error("Error in confirm-delivery:", error);
-      return next(new ErrorHandler(error.message, 500));
-    }
-  })
-);
-
-// cancel order by user
-router.put(
-  "/cancel-order/:id",
-  isAuthenticated,
-  catchAsyncErrors(async (req, res, next) => {
-    try {
-      const { cancellationReason } = req.body;
-
-      // Validate order ID
-      if (!req.params.id || req.params.id === 'undefined') {
-        return next(new ErrorHandler("Invalid order ID", 400));
-      }
-
-      const order = await Order.findById(req.params.id)
-        .populate({
-          path: 'cart.product',
-          select: 'name images price discountPrice stock sold_out'
-        })
-        .populate({
-          path: 'cart.shopId',
-          select: 'name address phone'
-        });
-
-      if (!order) {
-        return next(new ErrorHandler("Order not found with this id", 404));
-      }
-
-      // Check if the order belongs to the authenticated user
-      if (order.user._id.toString() !== req.user._id.toString()) {
-        return next(new ErrorHandler("You are not authorized to cancel this order", 403));
-      }
-
-      // Check if order can be cancelled
-      const cancellableStatuses = ["Processing", "Transferred to delivery partner"];
-      if (!cancellableStatuses.includes(order.status)) {
-        return next(new ErrorHandler(`Order cannot be cancelled in its current state: ${order.status}. Only orders in "Processing" or "Transferred to delivery partner" status can be cancelled.`, 400));
-      }
-
-      // Check if order is already cancelled
-      if (order.status === "Cancelled") {
-        return next(new ErrorHandler("Order is already cancelled", 400));
-      }
-
-      // Store previous status for notification
-      const previousStatus = order.status;
-
-      // Update order status to cancelled
-      order.status = "Cancelled";
-      order.cancelledAt = new Date();
-      order.cancellationReason = cancellationReason || "Cancelled by user";
-      order.cancelledBy = req.user._id;
-
-      // Restore product stock if items were already deducted
-      if (previousStatus === "Transferred to delivery partner") {
-        for (const item of order.cart) {
-          try {
-            const product = await Product.findById(item.product._id);
-            if (product) {
-              product.stock += item.quantity;
-              product.sold_out = Math.max(0, product.sold_out - item.quantity);
-              await product.save({ validateBeforeSave: false });
-            }
-          } catch (productError) {
-            console.error(`Error updating product ${item.product._id}:`, productError);
-            // Continue with other products even if one fails
-          }
-        }
-      }
-
-      await order.save({ validateBeforeSave: false });
-
-      // Create notification for order cancellation
-      try {
-        await createOrderNotification(
-          order.user,
-          order._id,
-          "Order Cancelled",
-          `Your order #${order._id.toString().slice(-6).toUpperCase()} has been cancelled successfully.`,
-          { 
-            previousStatus, 
-            newStatus: "Cancelled",
-            cancellationReason: order.cancellationReason,
-            cancelledBy: "user"
-          }
-        );
-      } catch (notificationError) {
-        console.error("Error creating cancellation notification:", notificationError);
-        // Don't fail the cancellation if notification fails
-      }
-
-      // Format the response
-      const formattedOrder = {
-        _id: order._id,
-        status: order.status,
-        totalPrice: order.totalPrice,
-        createdAt: order.createdAt,
-        cancelledAt: order.cancelledAt,
-        cancellationReason: order.cancellationReason,
-        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
-        items: order.cart.map((item) => ({
-          _id: item._id,
-          name: item.name || item.product?.name || "Product not found",
-          quantity: item.quantity,
-          price: item.price,
-          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
-          shopName: item.shopId?.name || "Shop not found",
-        })),
-        shippingAddress: order.shippingAddress,
-        paymentInfo: order.paymentInfo,
-        userLocation: order.userLocation || null,
-      };
-
-      res.status(200).json({
-        success: true,
-        message: "Order cancelled successfully",
-        order: formattedOrder,
-      });
-    } catch (error) {
-      console.error("Error in cancel-order:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })

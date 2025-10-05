@@ -4,44 +4,6 @@ const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const Order = require("../model/order");
 const jwt = require("jsonwebtoken");
-const calculateDistance = require("../config/distance");
-
-// Helper function to calculate distance between deliveryman and order user
-const getDistanceFromDeliveryManToUser = async (deliveryManId, userLocation) => {
-    try {
-        // Get deliveryman's current location
-        const deliveryMan = await DeliveryMan.findById(deliveryManId);
-        
-        if (!deliveryMan || !deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
-            return null; // No location data available
-        }
-        
-        // Check if user location is available
-        if (!userLocation || !userLocation.latitude || !userLocation.longitude) {
-            return null; // No user location data available
-        }
-        
-        // Extract coordinates
-        const [deliveryManLon, deliveryManLat] = deliveryMan.currentLocation.coordinates;
-        const userLat = userLocation.latitude;
-        const userLon = userLocation.longitude;
-        
-        // Calculate distance using the existing function
-        const distanceResult = calculateDistance(deliveryManLat, deliveryManLon, userLat, userLon);
-        
-        return {
-            distanceKm: parseFloat((distanceResult.distanceMeters / 1000).toFixed(2)),
-            distanceMeters: distanceResult.distanceMeters,
-            duration: distanceResult.localizedValues.duration.text
-        };
-    } catch (error) {
-        console.error('Error calculating distance:', error);
-        return null;
-    }
-};
-
-// Export the distance calculation function for use in other controllers
-exports.calculateDistanceToUser = getDistanceFromDeliveryManToUser;
 
 // Register delivery man
 exports.registerDeliveryMan = async (req, res) => {
@@ -188,7 +150,8 @@ exports.loginDeliveryMan = async (req, res) => {
         // Generate token
         const token = jwt.sign(
             { id: deliveryMan._id },
-            process.env.JWT_SECRET_KEY
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: '7d' }
         );
         console.log("Token generated successfully");
 
@@ -417,46 +380,32 @@ exports.getDeliveryManOrders = catchAsyncErrors(async (req, res, next) => {
     .populate('deliveryMan', 'name phone')
     .sort({ createdAt: -1 });
 
-    // Format orders for response with distance calculation
-    const formattedOrders = await Promise.all(orders.map(async (order) => {
-        // Calculate distance from deliveryman to order user
-        let distanceInfo = null;
-        if (order.userLocation) {
-            distanceInfo = await getDistanceFromDeliveryManToUser(req.deliveryMan._id, order.userLocation);
-        }
-
-        return {
-            _id: order._id,
-            shop: order.shop ? {
-                _id: order.shop._id,
-                name: order.shop.name,
-                address: order.shop.address
-            } : null,
-            user: order.user ? {
-                _id: order.user._id,
-                name: order.user.name,
-                phone: order.user.phone
-            } : null,
-            deliveryMan: order.deliveryMan ? {
-                _id: order.deliveryMan._id,
-                name: order.deliveryMan.name,
-                phone: order.deliveryMan.phone
-            } : null,
-            cart: order.cart || [],
-            totalPrice: order.totalPrice,
-            status: order.status,
-            distance: distanceInfo ? {
-                km: distanceInfo.distanceKm,
-                meters: distanceInfo.distanceMeters,
-                estimatedTime: distanceInfo.duration
-            } : null,
-            paymentInfo: order.paymentInfo || {},
-            shippingAddress: order.shippingAddress,
-            userLocation: order.userLocation || null,
-            createdAt: order.createdAt,
-            deliveredAt: order.deliveredAt,
-            paidAt: order.paidAt
-        };
+    // Format orders for response
+    const formattedOrders = orders.map(order => ({
+        _id: order._id,
+        shop: order.shop ? {
+            _id: order.shop._id,
+            name: order.shop.name,
+            address: order.shop.address
+        } : null,
+        user: order.user ? {
+            _id: order.user._id,
+            name: order.user.name,
+            phone: order.user.phone
+        } : null,
+        deliveryMan: order.deliveryMan ? {
+            _id: order.deliveryMan._id,
+            name: order.deliveryMan.name,
+            phone: order.deliveryMan.phone
+        } : null,
+        items: order.items || [],
+        totalPrice: order.totalPrice,
+        status: order.status,
+        paymentType: order.paymentType,
+        shippingAddress: order.shippingAddress,
+        userLocation: order.userLocation || null,
+        deliveryInstructions: order.deliveryInstructions,
+        createdAt: order.createdAt
     }));
 
     return res.status(200).json({
