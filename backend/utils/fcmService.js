@@ -219,6 +219,7 @@ const sendFCMNotificationToDeliverymen = async (deliverymen, order) => {
     // Send notifications to each deliveryman individually for better error handling
     const results = [];
     for (const deliveryman of validDeliverymen) {
+      console.log(`Processing FCM notification for deliveryman ID: ${deliveryman._id}, Name: ${deliveryman.name}`);
       try {
         const result = await sendFCMNotification(
           deliveryman.expoPushToken,
@@ -236,12 +237,12 @@ const sendFCMNotificationToDeliverymen = async (deliverymen, order) => {
         });
 
         if (result.success) {
-          console.log(`FCM notification sent successfully to deliveryman: ${deliveryman.name}`);
+          console.log(`FCM notification sent successfully to deliveryman ID: ${deliveryman._id}, Name: ${deliveryman.name}`);
         } else {
-          console.error(`Failed to send FCM notification to deliveryman: ${deliveryman.name}`, result.error);
+          console.error(`Failed to send FCM notification to deliveryman ID: ${deliveryman._id}, Name: ${deliveryman.name}`, result.error);
         }
       } catch (error) {
-        console.error(`Error sending FCM notification to deliveryman: ${deliveryman.name}`, error.message);
+        console.error(`Error sending FCM notification to deliveryman ID: ${deliveryman._id}, Name: ${deliveryman.name}`, error.message);
         results.push({
           deliverymanId: deliveryman._id,
           deliverymanName: deliveryman.name,

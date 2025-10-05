@@ -28,6 +28,13 @@ const sendFCMNotificationToDeliverymen = async (order) => {
       };
     }
 
+    // Log deliveryman IDs for debugging
+    console.log('Available deliverymen IDs:', availableDeliverymen.map(dm => ({
+      id: dm._id,
+      name: dm.name,
+      hasToken: !!dm.expoPushToken
+    })));
+
     // Use the new FCM service
     const result = await sendFCMToDeliverymen(availableDeliverymen, order);
     return result;
