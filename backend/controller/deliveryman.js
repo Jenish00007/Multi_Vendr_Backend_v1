@@ -404,12 +404,22 @@ exports.getDeliveryManOrders = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler("Delivery man not authenticated", 401));
     }
 
-    // Get orders
+    // Get orders - exclude orders that have been ignored by this deliveryman
     const orders = await Order.find({
-        $or: [
-            { status: 'Processing' },
-            { status: 'Out for delivery' },
-            { deliveryMan: req.deliveryMan._id }
+        $and: [
+            {
+                $or: [
+                    { status: 'Processing' },
+                    { status: 'Out for delivery' },
+                    { deliveryMan: req.deliveryMan._id }
+                ]
+            },
+            {
+                $or: [
+                    { ignored_by: { $exists: false } },
+                    { ignored_by: { $nin: [req.deliveryMan._id] } }
+                ]
+            }
         ]
     })
     .populate('shop', 'name address')
