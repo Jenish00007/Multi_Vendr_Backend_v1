@@ -94,7 +94,7 @@ const addSampleNotifications = async () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
-        phoneNumber: '9591727966'
+        phoneNumber: '1234567890'
       });
       console.log('Test user created:', testUser.email);
       users.push(testUser);

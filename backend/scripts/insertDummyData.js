@@ -21,7 +21,7 @@ const createDummyShop = async () => {
         password: "dummy123",
         description: "A dummy shop for testing",
         address: "123 Test Street",
-        phoneNumber: 9591727966,
+        phoneNumber: 1234567890,
         zipCode: 12345,
         avatar: "default-avatar.jpg",
         location: {

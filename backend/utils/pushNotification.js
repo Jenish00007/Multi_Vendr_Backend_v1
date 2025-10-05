@@ -221,91 +221,10 @@ const sendDeliveryNotification = async (pushToken, orderNumber, deliveryManName,
   return await sendPushNotification(pushToken, title, body, data);
 };
 
-/**
- * Send new order notification to available deliverymen
- * @param {object} order - Order object with details
- * @returns {Promise<object>} - Result of the push notifications
- */
-const sendNewOrderNotificationToDeliverymen = async (order) => {
-  try {
-    const DeliveryMan = require('../model/deliveryman');
-    
-    // Get all available deliverymen with valid push tokens
-    const availableDeliverymen = await DeliveryMan.find({
-      isAvailable: true,
-      isApproved: true,
-      expoPushToken: { $exists: true, $ne: null, $ne: '' }
-    }).select('expoPushToken name');
-
-    if (availableDeliverymen.length === 0) {
-      console.log('No available deliverymen with push tokens found');
-      return {
-        success: false,
-        error: 'No available deliverymen with push tokens found'
-      };
-    }
-
-    // Extract push tokens
-    const pushTokens = availableDeliverymen
-      .map(dm => dm.expoPushToken)
-      .filter(token => token && token.trim() !== '');
-
-    if (pushTokens.length === 0) {
-      console.log('No valid push tokens found for deliverymen');
-      return {
-        success: false,
-        error: 'No valid push tokens found for deliverymen'
-      };
-    }
-
-    // Create notification content
-    const orderNumber = order._id.toString().slice(-6).toUpperCase();
-    const shopName = order.cart && order.cart.length > 0 ? order.cart[0].shopId?.name || 'Unknown Shop' : 'Unknown Shop';
-    const totalItems = order.cart ? order.cart.reduce((total, item) => total + item.quantity, 0) : 0;
-    
-    const title = `New Order Available - #${orderNumber}`;
-    const body = `Order from ${shopName} - ${totalItems} items - ₹${order.totalPrice}`;
-    
-    const data = {
-      type: 'new_order',
-      orderId: order._id.toString(),
-      orderNumber: orderNumber,
-      shopName: shopName,
-      totalPrice: order.totalPrice,
-      totalItems: totalItems,
-      userLocation: order.userLocation,
-      shippingAddress: order.shippingAddress
-    };
-
-    console.log(`Sending new order notification to ${pushTokens.length} deliverymen`);
-    console.log('Order details:', {
-      orderId: order._id,
-      orderNumber,
-      shopName,
-      totalPrice: order.totalPrice,
-      totalItems
-    });
-
-    // Send bulk notifications
-    const result = await sendBulkPushNotifications(pushTokens, title, body, data);
-    
-    console.log('Push notification result:', result);
-    return result;
-
-  } catch (error) {
-    console.error('Error sending new order notification to deliverymen:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
 module.exports = {
   sendPushNotification,
   sendBulkPushNotifications,
   sendOrderStatusNotification,
   sendPromotionalNotification,
-  sendDeliveryNotification,
-  sendNewOrderNotificationToDeliverymen
+  sendDeliveryNotification
 }; 

@@ -6,10 +6,15 @@ const cartSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    productType: {
+        type: String,
+        required: true,
+        enum: ['Product', 'Event'] // Only allow these two types
+    },
     product: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-        required: true
+        required: true,
+        refPath: 'productType' // Dynamically references Product or Event
     },
     quantity: {
         type: Number,
@@ -35,7 +40,7 @@ const cartSchema = new mongoose.Schema({
 cartSchema.index({ user: 1, product: 1, selectedVariation: 1 }, { unique: true });
 
 // Update the updatedAt timestamp before saving
-cartSchema.pre('save', function(next) {
+cartSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
     next();
 });
