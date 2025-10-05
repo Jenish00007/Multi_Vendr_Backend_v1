@@ -42,7 +42,7 @@ const sendFCMNotificationToDeliverymen = async (order) => {
     const results = [];
     for (const deliveryman of availableDeliverymen) {
       try {
-        const response = await axios.post('http://localhost:8000/v2/fcm/send', {
+        const response = await axios.post('https://qauds.in/api/v2/fcm/send', {
           fcmToken: deliveryman.expoPushToken,
           title: title,
           body: body
