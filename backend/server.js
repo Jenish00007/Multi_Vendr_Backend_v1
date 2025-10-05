@@ -90,6 +90,7 @@ const configurationRoutes = require("./routes/configurationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const deliverymanRoutes = require("./routes/deliveryman");
 const unitRoutes = require("./routes/unitRoutes");
+const fcmRoutes = require("./routes/fcmRoutes");
 
 // end points
 app.use("/v2/withdraw", withdraw);
@@ -123,7 +124,7 @@ app.use("/v2/settings", configurationRoutes);
 app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
 app.use("/v2/units", unitRoutes);
-
+app.use("/v2/fcm", fcmRoutes);
 // it's for error handling
 app.use(ErrorHandler);
 
