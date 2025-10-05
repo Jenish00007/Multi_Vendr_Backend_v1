@@ -262,7 +262,7 @@ const sendNewOrderNotificationToDeliverymen = async (order) => {
     const orderNumber = order._id.toString().slice(-6).toUpperCase();
     
     // Try to get shop name from populated shop field first, then from cart items
-    let shopName = 'Unknown Shop';
+    let shopName = 'Qauds';
     if (order.shop && order.shop.name) {
       shopName = order.shop.name;
     } else if (order.cart && order.cart.length > 0 && order.cart[0].shopId && order.cart[0].shopId.name) {
