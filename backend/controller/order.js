@@ -8,7 +8,10 @@ const Shop = require("../model/shop");
 const Product = require("../model/product");
 const DeliveryMan = require("../model/deliveryman");
 const { createOrderNotification } = require("../utils/notificationHelper");
-const { sendFCMNotificationToDeliverymen: sendFCMToDeliverymen } = require("../utils/fcmService");
+const { 
+  sendFCMNotificationToDeliverymen: sendFCMToDeliverymen,
+  sendFCMNotificationToSeller: sendFCMToSeller
+} = require("../utils/fcmService");
 
 // Function to send FCM notifications to deliverymen
 const sendFCMNotificationToDeliverymen = async (order) => {
@@ -41,6 +44,47 @@ const sendFCMNotificationToDeliverymen = async (order) => {
 
   } catch (error) {
     console.error('Error sending FCM notifications to deliverymen:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// Function to send FCM notifications to seller
+const sendFCMNotificationToSeller = async (order) => {
+  try {
+    // Get the shop with FCM token
+    const shop = await Shop.findById(order.shop).select('name expoPushToken _id');
+
+    if (!shop) {
+      console.log('Shop not found for order:', order._id);
+      return {
+        success: false,
+        error: 'Shop not found'
+      };
+    }
+
+    if (!shop.expoPushToken) {
+      console.log('Shop does not have an FCM token:', shop.name);
+      return {
+        success: false,
+        error: 'Shop does not have an FCM token'
+      };
+    }
+
+    console.log('Sending notification to seller:', {
+      shopId: shop._id,
+      shopName: shop.name,
+      hasToken: !!shop.expoPushToken
+    });
+
+    // Use the new FCM service
+    const result = await sendFCMToSeller(shop, order);
+    return result;
+
+  } catch (error) {
+    console.error('Error sending FCM notification to seller:', error);
     return {
       success: false,
       error: error.message
@@ -123,7 +167,7 @@ router.post(
         orders.push(order);
       }
 
-      // Send FCM notifications to deliverymen for each order
+      // Send FCM notifications to deliverymen and sellers for each order
       for (const order of orders) {
         try {
           // Populate the order with shop information before sending notification
@@ -134,7 +178,11 @@ router.post(
             })
             .populate('shop', 'name address phone');
           
+          // Send notification to deliverymen
           await sendFCMNotificationToDeliverymen(populatedOrder);
+          
+          // Send notification to seller
+          await sendFCMNotificationToSeller(populatedOrder);
         } catch (notificationError) {
           console.error("Error sending FCM notification for order:", order._id, notificationError);
           // Don't fail the order creation if notification fails

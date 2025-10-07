@@ -279,8 +279,68 @@ const sendFCMNotificationToDeliverymen = async (deliverymen, order) => {
   }
 };
 
+/**
+ * Send FCM notification to seller/shop for new orders
+ * @param {object} shop - Shop object with expoPushToken
+ * @param {object} order - Order object with details
+ * @returns {Promise<object>} - Result object with success status and details
+ */
+const sendFCMNotificationToSeller = async (shop, order) => {
+  try {
+    if (!shop || !shop.expoPushToken) {
+      return {
+        success: false,
+        error: "Shop does not have a valid FCM token"
+      };
+    }
+
+    // Create notification content
+    const orderNumber = order._id.toString().slice(-6).toUpperCase();
+    
+    const totalItems = order.cart ? 
+      order.cart.reduce((total, item) => total + item.quantity, 0) : 0;
+    
+    const title = `New Order Received - #${orderNumber}`;
+    const body = `You have a new order with ${totalItems} items - ₹${order.totalPrice}`;
+
+    // Prepare data payload
+    const data = {
+      orderId: order._id.toString(),
+      orderNumber: orderNumber,
+      totalItems: totalItems.toString(),
+      totalPrice: order.totalPrice.toString(),
+      type: "new_order_seller"
+    };
+
+    console.log(`Sending FCM notification to seller: ${shop.name} (ID: ${shop._id})`);
+
+    const result = await sendFCMNotification(
+      shop.expoPushToken,
+      title,
+      body,
+      data
+    );
+
+    if (result.success) {
+      console.log(`FCM notification sent successfully to seller: ${shop.name}`);
+    } else {
+      console.error(`Failed to send FCM notification to seller: ${shop.name}`, result.error);
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error("Error sending FCM notification to seller:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
 module.exports = {
   sendFCMNotification,
   sendFCMNotificationToMultiple,
-  sendFCMNotificationToDeliverymen
+  sendFCMNotificationToDeliverymen,
+  sendFCMNotificationToSeller
 };
