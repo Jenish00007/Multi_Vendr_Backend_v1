@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 
-// Initialize Firebase Admin if not already initialized
+// Initialize Firebase Admin for Deliverymen if not already initialized
 if (!admin.apps.length) {
   const serviceAccount = require("../config/firebase-service-account.json");
 
@@ -8,6 +8,10 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(serviceAccount),
   });
 }
+
+// Use the same Firebase instance for sellers as for other notifications
+// This ensures the sender ID matches the one used by the Seller App
+const adminSeller = admin;
 
 /**
  * Send FCM notification to a single device
@@ -280,7 +284,7 @@ const sendFCMNotificationToDeliverymen = async (deliverymen, order) => {
 };
 
 /**
- * Send FCM notification to seller/shop for new orders
+ * Send FCM notification to seller/shop for new orders (using separate Firebase instance)
  * @param {object} shop - Shop object with expoPushToken
  * @param {object} order - Order object with details
  * @returns {Promise<object>} - Result object with success status and details
@@ -313,27 +317,64 @@ const sendFCMNotificationToSeller = async (shop, order) => {
     };
 
     console.log(`Sending FCM notification to seller: ${shop.name} (ID: ${shop._id})`);
+    console.log(`Using Firebase instance: ${adminSeller.name || 'default'}`);
 
-    const result = await sendFCMNotification(
-      shop.expoPushToken,
-      title,
-      body,
-      data
-    );
+    // Use seller-specific Firebase instance
+    const message = {
+      token: shop.expoPushToken,
+      notification: {
+        title,
+        body,
+      },
+      data: {
+        ...data,
+        timestamp: new Date().toISOString()
+      },
+      android: {
+        priority: "high",
+        notification: {
+          sound: "default",
+          channelId: "default"
+        }
+      },
+      apns: {
+        payload: {
+          aps: { 
+            sound: "default",
+            badge: 1
+          },
+        },
+      },
+    };
 
-    if (result.success) {
-      console.log(`FCM notification sent successfully to seller: ${shop.name}`);
-    } else {
-      console.error(`Failed to send FCM notification to seller: ${shop.name}`, result.error);
-    }
+    const response = await adminSeller.messaging().send(message);
 
-    return result;
+    console.log(`FCM notification sent successfully to seller: ${shop.name}`);
+    
+    return {
+      success: true,
+      messageId: response,
+      fcmToken: shop.expoPushToken,
+      firebaseInstance: adminSeller.name || 'default'
+    };
 
   } catch (error) {
     console.error("Error sending FCM notification to seller:", error);
+    
+    // Handle specific Firebase errors
+    let errorMessage = error.message;
+    if (error.code === 'app/invalid-credential') {
+      errorMessage = "Firebase credentials are invalid for seller app. Please check your service account configuration.";
+    } else if (error.code === 'messaging/invalid-registration-token') {
+      errorMessage = "Invalid FCM token provided for seller.";
+    } else if (error.code === 'messaging/registration-token-not-registered') {
+      errorMessage = "Seller FCM token is not registered or has been unregistered.";
+    }
+    
     return {
       success: false,
-      error: error.message
+      error: errorMessage,
+      fcmToken: shop.expoPushToken
     };
   }
 };
