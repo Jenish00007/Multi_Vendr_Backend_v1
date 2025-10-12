@@ -10,6 +10,7 @@ const Order = require("./model/order");
 const { sendFCMNotificationToSeller } = require("./utils/fcmService");
 const fs = require("fs");
 const path = require("path");
+const DB_URL="mongodb+srv://qaudsinfo:Qauds123@cluster0.nyfuhwt.mongodb.net/qauds?retryWrites=true&w=majority&appName=Cluster0";
 
 async function testSellerNotification() {
   try {
@@ -37,7 +38,7 @@ async function testSellerNotification() {
     
     // Connect to database
     console.log("\n📊 Connecting to database...");
-    await mongoose.connect(process.env.DB_URL, {
+    await mongoose.connect(DB_URL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
