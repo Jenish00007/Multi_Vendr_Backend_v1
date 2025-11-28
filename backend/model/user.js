@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { generateUserId } = require("../utils/idGenerator");
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -68,7 +69,7 @@ const userSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now(),
+    default: Date.now,
   },
   otp: {
     code: String,
@@ -77,7 +78,64 @@ const userSchema = new mongoose.Schema({
   isPhoneVerified: {
     type: Boolean,
     default: false
+  },
+  userId: {
+    type: String,
+    unique: true,
+    sparse: true, // Allow null values but ensure uniqueness when present
+    index: true
   }
+});
+
+// Generate standardized User ID before saving
+userSchema.pre("save", async function (next) {
+  // Only generate userId if it doesn't exist
+  if (!this.userId) {
+    try {
+      const User = this.constructor;
+      let attempts = 0;
+      const maxAttempts = 5;
+      let generated = false;
+      
+      // Retry logic to handle potential race conditions
+      while (!generated && attempts < maxAttempts) {
+        try {
+          // Generate new userId
+          const newUserId = await generateUserId(User);
+          
+          // Check if this userId already exists (race condition check)
+          const existingUser = await User.findOne({ userId: newUserId });
+          if (!existingUser) {
+            // ID is unique, assign it
+            this.userId = newUserId;
+            generated = true;
+          } else {
+            // ID already exists, try again
+            attempts++;
+            if (attempts < maxAttempts) {
+              // Wait a tiny bit before retrying to avoid immediate collision
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+          }
+        } catch (genError) {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            throw genError;
+          }
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+      
+      if (!generated) {
+        console.error("Failed to generate unique User ID after multiple attempts");
+        // Continue without userId - it can be generated later
+      }
+    } catch (error) {
+      console.error("Error generating User ID:", error);
+      // Continue without userId if generation fails - it can be generated later
+    }
+  }
+  next();
 });
 
 //  Hash password
