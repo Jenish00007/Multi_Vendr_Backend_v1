@@ -47,6 +47,12 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
 
     // Create shop directly without activation
     const newSeller = await Shop.create(seller);
+    console.log('Shop created successfully:', { 
+      id: newSeller._id,
+      shopId: newSeller.shopId, // Standardized Shop ID
+      email: newSeller.email, 
+      name: newSeller.name 
+    });
     sendShopToken(newSeller, 201, res);
 
   } catch (error) {
@@ -91,6 +97,12 @@ router.post(
         zipCode,
         address,
         phoneNumber,
+      });
+      console.log('Shop activated successfully:', { 
+        id: seller._id,
+        shopId: seller.shopId, // Standardized Shop ID
+        email: seller.email, 
+        name: seller.name 
       });
 
       sendShopToken(seller, 201, res);

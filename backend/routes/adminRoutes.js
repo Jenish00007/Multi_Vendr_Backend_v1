@@ -12,20 +12,75 @@ const { getDeliveryManPreview } = require("../controller/deliveryman");
 // Get dashboard stats
 router.get("/dashboard-stats", isAuthenticated, isAdmin("Admin"), catchAsyncErrors(async (req, res, next) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const totalSellers = await Shop.countDocuments();
+    // Basic counts
+    const totalUsers = await User.countDocuments({ role: { $ne: "Admin" } }); // Exclude admin users
+    const totalStores = await Shop.countDocuments();
+    const totalProducts = await Product.countDocuments();
     const totalOrders = await Order.countDocuments();
-    const totalRevenue = await Order.aggregate([
+
+    // Calculate total items sold (sum of all quantities from all orders)
+    const totalItemsResult = await Order.aggregate([
+      {
+        $unwind: "$cart"
+      },
+      {
+        $group: {
+          _id: null,
+          totalItems: { 
+            $sum: { 
+              $ifNull: ["$cart.quantity", 0] 
+            } 
+          }
+        }
+      }
+    ]);
+    const totalItems = totalItemsResult[0]?.totalItems || 0;
+
+    // Calculate total earnings (10% commission from delivered orders)
+    const earningsResult = await Order.aggregate([
       { $match: { status: "Delivered" } },
       { $group: { _id: null, total: { $sum: "$totalPrice" } } }
     ]);
+    const totalRevenue = earningsResult[0]?.total || 0;
+    const totalEarnings = totalRevenue * 0.1; // 10% admin commission
+
+    // Order status counts
+    const orderStatusCounts = await Order.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Convert to object for easier access
+    const statusCounts = {};
+    orderStatusCounts.forEach(item => {
+      statusCounts[item._id] = item.count;
+    });
 
     res.status(200).json({
       success: true,
       totalUsers,
-      totalSellers,
+      totalStores,
+      totalProducts,
+      totalItems,
       totalOrders,
-      totalRevenue: totalRevenue[0]?.total || 0
+      totalEarnings,
+      totalRevenue,
+      orderStatusCounts: {
+        unassigned: statusCounts["Unassigned"] || 0,
+        accepted: statusCounts["Accepted"] || 0,
+        packaging: statusCounts["Packaging"] || 0,
+        outForDelivery: statusCounts["Out For Delivery"] || 0,
+        delivered: statusCounts["Delivered"] || 0,
+        canceled: statusCounts["Canceled"] || statusCounts["Cancelled"] || 0,
+        refunded: statusCounts["Refunded"] || 0,
+        paymentFailed: statusCounts["Payment Failed"] || 0,
+        processing: statusCounts["Processing"] || 0,
+        pending: statusCounts["Pending"] || 0
+      }
     });
   } catch (error) {
     return next(new ErrorHandler(error.message, 500));

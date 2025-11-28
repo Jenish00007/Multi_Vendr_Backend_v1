@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const User = require("../model/user");
+const Order = require("../model/order");
 const { upload } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
 const fs = require("fs");
@@ -10,6 +11,7 @@ const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const { isAuthenticated, isAdmin } = require("../middleware/auth");
 const crypto = require("crypto");
+const XLSX = require("xlsx");
 
 const router = express.Router();
 
@@ -57,7 +59,8 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
       // Create user
       const user = await User.create(userData);
       console.log('User created successfully:', { 
-        id: user._id, 
+        id: user._id,
+        userId: user.userId, // Standardized User ID
         email: user.email, 
         name: user.name 
       });
@@ -72,6 +75,7 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
         token,
         user: {
           id: user._id,
+          userId: user.userId, // Include standardized User ID
           name: user.name,
           email: user.email,
           phoneNumber: user.phoneNumber,
@@ -457,6 +461,175 @@ router.get(
         success: true,
         users,
       });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// Helper function to format address
+const formatAddress = (addr) => {
+  const addressParts = [];
+  
+  // Add address type if available
+  if (addr.addressType) {
+    addressParts.push(`[${addr.addressType}]`);
+  }
+  
+  // Add address line 1
+  if (addr.address1) {
+    addressParts.push(addr.address1);
+  }
+  
+  // Add address line 2
+  if (addr.address2) {
+    addressParts.push(addr.address2);
+  }
+  
+  // Add city
+  if (addr.city) {
+    addressParts.push(addr.city);
+  }
+  
+  // Add country
+  if (addr.country) {
+    addressParts.push(addr.country);
+  }
+  
+  // Add zip code
+  if (addr.zipCode) {
+    addressParts.push(`ZIP: ${addr.zipCode}`);
+  }
+  
+  // Join all parts with comma and space
+  return addressParts.length > 0 ? addressParts.join(', ') : null;
+};
+
+// export users to Excel --- for admin
+router.get(
+  "/admin-export-users",
+  isAuthenticated,
+  isAdmin("Admin"),
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const users = await User.find().sort({
+        createdAt: -1,
+      });
+
+      // Prepare data for Excel
+      const excelData = await Promise.all(users.map(async (user) => {
+        // Get addresses from orders (primary source)
+        const userOrders = await Order.find({ "user._id": user._id })
+          .select("shippingAddress")
+          .sort({ createdAt: -1 })
+          .limit(50); // Get more orders to find all unique addresses
+        
+        // Extract unique addresses from orders
+        const orderAddresses = new Set();
+        userOrders.forEach((order) => {
+          if (order.shippingAddress) {
+            const addr = order.shippingAddress;
+            
+            // Build address string from shippingAddress
+            const addressParts = [];
+            
+            // Check if it's an object with properties
+            if (typeof addr === 'object' && addr !== null) {
+              if (addr.address1) addressParts.push(addr.address1);
+              if (addr.address2) addressParts.push(addr.address2);
+              if (addr.city) addressParts.push(addr.city);
+              if (addr.country) addressParts.push(addr.country);
+              if (addr.zipCode) addressParts.push(`ZIP: ${addr.zipCode}`);
+              
+              // If we have any parts, create the address string
+              if (addressParts.length > 0) {
+                const addressString = addressParts.join(', ');
+                orderAddresses.add(addressString);
+              }
+            } else if (typeof addr === 'string' && addr.trim() !== '') {
+              // If it's a string, use it directly
+              orderAddresses.add(addr);
+            }
+          }
+        });
+        
+        // Also check user profile addresses
+        const profileAddresses = new Set();
+        if (user.addresses && user.addresses.length > 0) {
+          user.addresses.forEach((addr) => {
+            const formatted = formatAddress(addr);
+            if (formatted) {
+              profileAddresses.add(formatted);
+            }
+          });
+        }
+        
+        // Combine all addresses (orders first, then profile)
+        const allAddresses = Array.from(orderAddresses);
+        Array.from(profileAddresses).forEach(addr => {
+          if (!allAddresses.includes(addr)) {
+            allAddresses.push(addr);
+          }
+        });
+        
+        // Format final addresses string
+        const addressesString = allAddresses.length > 0 
+          ? allAddresses.join(' | ') 
+          : 'N/A';
+
+        return {
+          "User ID": user.userId || user._id.toString(), // Standardized User ID (USR-XXXXXX) or fallback to ObjectId
+          "MongoDB ID": user._id.toString(), // Keep MongoDB ID for reference
+          "Name": user.name || 'N/A',
+          "Email": user.email || 'N/A',
+          "Phone Number": user.phoneNumber || 'N/A',
+          "Role": user.role || 'user',
+          "Phone Verified": user.isPhoneVerified ? 'Yes' : 'No',
+          "Addresses": addressesString,
+          "Created At": user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          }) : 'N/A',
+        };
+      }));
+
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+
+      // Set column widths
+      const columnWidths = [
+        { wch: 15 }, // User ID (Standardized: USR-XXXXXX)
+        { wch: 25 }, // MongoDB ID
+        { wch: 20 }, // Name
+        { wch: 30 }, // Email
+        { wch: 15 }, // Phone Number
+        { wch: 10 }, // Role
+        { wch: 15 }, // Phone Verified
+        { wch: 50 }, // Addresses
+        { wch: 20 }, // Created At
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Generate Excel file buffer
+      const excelBuffer = XLSX.write(workbook, { 
+        type: 'buffer', 
+        bookType: 'xlsx' 
+      });
+
+      // Set response headers
+      const fileName = `users_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+      // Send the file
+      res.send(excelBuffer);
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }

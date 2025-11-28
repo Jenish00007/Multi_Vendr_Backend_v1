@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { generateOrderId } = require("../utils/idGenerator");
 
 const orderSchema = new mongoose.Schema({
   cart: {
@@ -120,7 +121,64 @@ const orderSchema = new mongoose.Schema({
   store: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Shop'
+  },
+  orderId: {
+    type: String,
+    unique: true,
+    sparse: true, // Allow null values but ensure uniqueness when present
+    index: true
   }
+});
+
+// Generate standardized Order ID before saving
+orderSchema.pre("save", async function (next) {
+  // Only generate orderId if it doesn't exist
+  if (!this.orderId) {
+    try {
+      const Order = this.constructor;
+      let attempts = 0;
+      const maxAttempts = 5;
+      let generated = false;
+      
+      // Retry logic to handle potential race conditions
+      while (!generated && attempts < maxAttempts) {
+        try {
+          // Generate new orderId
+          const newOrderId = await generateOrderId(Order);
+          
+          // Check if this orderId already exists (race condition check)
+          const existingOrder = await Order.findOne({ orderId: newOrderId });
+          if (!existingOrder) {
+            // ID is unique, assign it
+            this.orderId = newOrderId;
+            generated = true;
+          } else {
+            // ID already exists, try again
+            attempts++;
+            if (attempts < maxAttempts) {
+              // Wait a tiny bit before retrying to avoid immediate collision
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+          }
+        } catch (genError) {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            throw genError;
+          }
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+      
+      if (!generated) {
+        console.error("Failed to generate unique Order ID after multiple attempts");
+        // Continue without orderId - it can be generated later
+      }
+    } catch (error) {
+      console.error("Error generating Order ID:", error);
+      // Continue without orderId if generation fails - it can be generated later
+    }
+  }
+  next();
 });
 
 // Add indexes for better query performance

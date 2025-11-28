@@ -164,6 +164,12 @@ router.post(
           otp, // Save OTP in the order
           shop: shopId, // Add the shopId here
         });
+        console.log('Order created successfully:', { 
+          id: order._id,
+          orderId: order.orderId, // Standardized Order ID
+          status: order.status,
+          totalPrice: order.totalPrice
+        });
         orders.push(order);
       }
 
@@ -279,7 +285,7 @@ router.get("/get-seller-all-orders/:shopId",catchAsyncErrors(async (req, res, ne
 // update order status for seller    ---------------(product)
 router.put(
   "/update-order-status/:id",
-  isSeller,
+  isSeller,                                                                                         
   catchAsyncErrors(async (req, res, next) => {
     try {
       const order = await Order.findById(req.params.id);
