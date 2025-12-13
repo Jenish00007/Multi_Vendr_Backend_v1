@@ -49,7 +49,7 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
     const newSeller = await Shop.create(seller);
     console.log('Shop created successfully:', { 
       id: newSeller._id,
-      shopId: newSeller.shopId, // Standardized Shop ID
+      shopId: newSeller.shopId,
       email: newSeller.email, 
       name: newSeller.name 
     });

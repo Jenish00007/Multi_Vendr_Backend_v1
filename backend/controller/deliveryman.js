@@ -44,7 +44,7 @@ const getDistanceFromDeliveryManToUser = async (deliveryManId, userLocation) => 
 exports.calculateDistanceToUser = getDistanceFromDeliveryManToUser;
 
 // Register delivery man
-exports.registerDeliveryMan = async (req, res) => {
+exports.registerDeliveryMan = catchAsyncErrors(async (req, res, next) => {
     try {
         console.log("Starting delivery man registration...");
         const { 
@@ -90,22 +90,41 @@ exports.registerDeliveryMan = async (req, res) => {
         // Get the file URL from the uploaded file
         let idProofUrl = "";
         if (req.file) {
-            idProofUrl = req.file.location || req.file.path;
-            console.log("ID proof uploaded:", idProofUrl);
+            // For S3, construct the URL from the key
+            if (req.file.key) {
+                // Construct S3 URL
+                idProofUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${req.file.key}`;
+            } else if (req.file.location) {
+                idProofUrl = req.file.location;
+            } else if (req.file.path) {
+                idProofUrl = req.file.path;
+            }
+            
+            console.log("ID proof uploaded:", {
+                key: req.file.key,
+                location: req.file.location,
+                path: req.file.path,
+                finalUrl: idProofUrl
+            });
             
             if (!idProofUrl) {
+                console.error("Failed to get ID proof URL from file object:", req.file);
                 return res.status(400).json({
                     success: false,
-                    message: "Failed to upload ID proof"
+                    message: "Failed to upload ID proof - URL not generated"
                 });
             }
         } else {
-            console.log("No ID proof file provided");
+            console.log("No ID proof file provided. Request body:", req.body);
+            console.log("Request files:", req.files);
             return res.status(400).json({
                 success: false,
                 message: "ID proof is required"
             });
         }
+
+        // Check if admin is registering (auto-approve)
+        const isAdminRegister = req.user && req.user.role === "Admin";
 
         // Create new delivery man
         const deliveryMan = await DeliveryMan.create({
@@ -118,7 +137,7 @@ exports.registerDeliveryMan = async (req, res) => {
             vehicleNumber,
             licenseNumber,
             idProof: idProofUrl,
-            isApproved: false // Default to false, needs admin approval
+            isApproved: isAdminRegister // Auto-approve if admin is registering
         });
 
         console.log("Delivery man created successfully:", deliveryMan._id);
@@ -128,18 +147,17 @@ exports.registerDeliveryMan = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: "Registration successful! Waiting for admin approval.",
+            message: isAdminRegister 
+                ? "Delivery man registered and approved successfully!" 
+                : "Registration successful! Waiting for admin approval.",
             deliveryMan
         });
 
     } catch (error) {
         console.error("Error in registerDeliveryMan:", error);
-        return res.status(500).json({
-            success: false,
-            message: error.message || "Internal server error"
-        });
+        return next(new ErrorHandler(error.message || "Internal server error", 500));
     }
-};
+});
 
 // Login delivery man
 exports.loginDeliveryMan = async (req, res) => {
@@ -357,9 +375,18 @@ exports.editDeliveryMan = catchAsyncErrors(async (req, res, next) => {
 
         // Update ID proof if new file is uploaded
         if (req.file) {
-            const idProofUrl = req.file.location || req.file.key;
+            let idProofUrl = "";
+            // For S3, construct the URL from the key
+            if (req.file.key) {
+                idProofUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${req.file.key}`;
+            } else if (req.file.location) {
+                idProofUrl = req.file.location;
+            } else if (req.file.path) {
+                idProofUrl = req.file.path;
+            }
+            
             if (!idProofUrl) {
-                return next(new ErrorHandler("Failed to upload ID proof", 400));
+                return next(new ErrorHandler("Failed to upload ID proof - URL not generated", 400));
             }
             deliveryMan.idProof = idProofUrl;
         }
