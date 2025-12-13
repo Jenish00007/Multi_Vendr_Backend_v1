@@ -95,7 +95,11 @@ router.post(
 // get all events
 router.get("/get-all-events", async (req, res, next) => {
   try {
-    const events = await Event.find();
+    const currentDate = new Date();
+    const events = await Event.find({
+      Finish_Date: { $gt: currentDate },
+      status: "Running"
+    });
     res.status(201).json({
       success: true,
       events,

@@ -125,6 +125,15 @@ app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
 app.use("/v2/units", unitRoutes);
 app.use("/v2/fcm", fcmRoutes);
+
+// Debug: Log all registered routes
+console.log("Registered deliveryman routes:");
+deliverymanRoutes.stack.forEach((r) => {
+  if (r.route) {
+    console.log(`  ${Object.keys(r.route.methods).join(', ').toUpperCase()} ${r.route.path}`);
+  }
+});
+
 // it's for error handling
 app.use(ErrorHandler);
 

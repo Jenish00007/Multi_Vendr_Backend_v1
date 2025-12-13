@@ -36,6 +36,9 @@ const UPLOAD_FOLDERS = {
   // Event related
   EVENT_BANNER: 'events/banners',
   EVENT_IMAGES: 'events/images',
+  
+  // Delivery man related
+  DELIVERY_MAN_ID_PROOF: 'delivery-man/id-proofs',
 };
 
   // Map fieldnames to their respective folders
@@ -57,6 +60,8 @@ const UPLOAD_FOLDERS = {
     'moduleBanner': UPLOAD_FOLDERS.MODULE_BANNER,
     // Event related
     'eventBanner': UPLOAD_FOLDERS.EVENT_BANNER,
+    // Delivery man related
+    'idProof': UPLOAD_FOLDERS.DELIVERY_MAN_ID_PROOF,
   };
 
 const upload = multer({
