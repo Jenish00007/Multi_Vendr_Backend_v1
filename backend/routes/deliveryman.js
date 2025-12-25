@@ -18,7 +18,9 @@ const {
     acceptOrder,
     ignoreOrder,
     verifyToken,
-    updateExpoPushToken
+    updateExpoPushToken,
+    updateCurrentLocation,
+    getDeliveryManLocation
 } = require("../controller/deliveryman");
 
 // Public routes
@@ -34,6 +36,8 @@ router.post("/orders/:orderId/ignore", isDeliveryMan, ignoreOrder);
 router.put("/update-profile", isDeliveryMan, updateDeliveryManProfile);
 router.put("/update-password", isDeliveryMan, updateDeliveryManPassword);
 router.put("/expo-push-token", isDeliveryMan, updateExpoPushToken);
+router.put("/location", isDeliveryMan, updateCurrentLocation);
+router.get("/:id/location", getDeliveryManLocation);
 
 // Admin routes
 router.get("/all", isAuthenticated, isAdmin("Admin"), getAllDeliveryMen);

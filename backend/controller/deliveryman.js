@@ -684,4 +684,37 @@ exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {
         message: 'Expo push token updated', 
         token 
     });
-}); 
+});
+
+// Update current location (Delivery man)
+exports.updateCurrentLocation = catchAsyncErrors(async (req, res, next) => {
+    const { latitude, longitude } = req.body;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        return next(new ErrorHandler("latitude and longitude are required", 400));
+    }
+    const updated = await DeliveryMan.findByIdAndUpdate(
+        req.deliveryMan._id,
+        { currentLocation: { type: "Point", coordinates: [longitude, latitude] } },
+        { new: true }
+    );
+    if (!updated) {
+        return next(new ErrorHandler("Delivery man not found", 404));
+    }
+    res.status(200).json({
+        success: true,
+        location: updated.currentLocation
+    });
+});
+
+// Get delivery man location (public)
+exports.getDeliveryManLocation = catchAsyncErrors(async (req, res, next) => {
+    const { id } = req.params;
+    const deliveryMan = await DeliveryMan.findById(id).select('currentLocation');
+    if (!deliveryMan) {
+        return next(new ErrorHandler("Delivery man not found", 404));
+    }
+    res.status(200).json({
+        success: true,
+        location: deliveryMan.currentLocation
+    });
+});
