@@ -596,4 +596,97 @@ exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {
         message: 'Expo push token updated', 
         token 
     });
+});
+
+// Update delivery man location
+exports.updateLocation = catchAsyncErrors(async (req, res, next) => {
+    try {
+        const { latitude, longitude } = req.body;
+        
+        if (!latitude || !longitude) {
+            return next(new ErrorHandler('Latitude and longitude are required', 400));
+        }
+
+        const lat = parseFloat(latitude);
+        const lon = parseFloat(longitude);
+
+        if (isNaN(lat) || isNaN(lon)) {
+            return next(new ErrorHandler('Invalid latitude or longitude', 400));
+        }
+
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            return next(new ErrorHandler('Latitude must be between -90 and 90, longitude between -180 and 180', 400));
+        }
+
+        const deliveryMan = await DeliveryMan.findById(req.deliveryMan._id);
+        if (!deliveryMan) {
+            return next(new ErrorHandler('Delivery man not found', 404));
+        }
+
+        // Update location in GeoJSON format [longitude, latitude]
+        deliveryMan.currentLocation = {
+            type: 'Point',
+            coordinates: [lon, lat]
+        };
+
+        await deliveryMan.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Location updated successfully',
+            location: {
+                latitude: lat,
+                longitude: lon
+            }
+        });
+    } catch (error) {
+        return next(new ErrorHandler(error.message, 500));
+    }
+});
+
+// Get delivery man location by order ID (for user app)
+exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
+    try {
+        const { orderId } = req.params;
+        
+        const Order = require("../model/order");
+        const order = await Order.findById(orderId)
+            .populate('deliveryMan', 'currentLocation name');
+
+        if (!order) {
+            return next(new ErrorHandler('Order not found', 404));
+        }
+
+        if (!order.deliveryMan) {
+            return res.status(200).json({
+                success: true,
+                message: 'No delivery man assigned yet',
+                location: null
+            });
+        }
+
+        const deliveryMan = order.deliveryMan;
+        
+        if (!deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
+            return res.status(200).json({
+                success: true,
+                message: 'Delivery man location not available',
+                location: null
+            });
+        }
+
+        const [longitude, latitude] = deliveryMan.currentLocation.coordinates;
+
+        res.status(200).json({
+            success: true,
+            location: {
+                latitude: latitude,
+                longitude: longitude,
+                deliveryManName: deliveryMan.name
+            },
+            lastUpdated: deliveryMan.updatedAt
+        });
+    } catch (error) {
+        return next(new ErrorHandler(error.message, 500));
+    }
 }); 

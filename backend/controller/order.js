@@ -497,6 +497,65 @@ router.get(
   })
 );
 
+// Get deliveryman location by order ID (for user app)
+router.get(
+  "/deliveryman-location/:orderId",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user._id;
+      
+      const order = await Order.findById(orderId)
+        .populate({
+          path: 'deliveryMan',
+          select: 'currentLocation name'
+        });
+
+      if (!order) {
+        return next(new ErrorHandler('Order not found', 404));
+      }
+
+      // Check if order belongs to the authenticated user
+      if (order.user._id.toString() !== userId.toString()) {
+        return next(new ErrorHandler('You are not authorized to view this order', 403));
+      }
+
+      if (!order.deliveryMan) {
+        return res.status(200).json({
+          success: true,
+          message: 'No delivery man assigned yet',
+          location: null
+        });
+      }
+
+      const deliveryMan = order.deliveryMan;
+      
+      if (!deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
+        return res.status(200).json({
+          success: true,
+          message: 'Delivery man location not available',
+          location: null
+        });
+      }
+
+      const [longitude, latitude] = deliveryMan.currentLocation.coordinates;
+
+      res.status(200).json({
+        success: true,
+        location: {
+          latitude: latitude,
+          longitude: longitude,
+          deliveryManName: deliveryMan.name
+        },
+        lastUpdated: deliveryMan.updatedAt
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 // get deliveryman order history
 router.get(
   "/deliveryman/order-history",
