@@ -700,6 +700,34 @@ exports.updateCurrentLocation = catchAsyncErrors(async (req, res, next) => {
     if (!updated) {
         return next(new ErrorHandler("Delivery man not found", 404));
     }
+    // broadcast via socket.io to interested clients
+    try {
+        const { getIO } = require("../socket");
+        const io = getIO();
+        if (io) {
+            const payload = {
+                deliverymanId: String(updated._id),
+                latitude,
+                longitude,
+                timestamp: new Date().toISOString()
+            };
+            // Emit to deliveryman room
+            io.to(`dm:${String(updated._id)}`).emit("location_update", payload);
+            // Emit to all active orders assigned to this deliveryman
+            const activeOrders = await Order.find({
+                $or: [
+                    { deliveryMan: updated._id },
+                    { delivery_man: updated._id }
+                ],
+                status: { $in: ["Out for delivery", "out_for_delivery", "ASSIGNED", "PICKED"] }
+            }).select("_id");
+            activeOrders.forEach(o => {
+                io.to(String(o._id)).emit("location_update", { ...payload, orderId: String(o._id) });
+            });
+        }
+    } catch (e) {
+        console.error("Socket broadcast error:", e.message);
+    }
     res.status(200).json({
         success: true,
         location: updated.currentLocation
