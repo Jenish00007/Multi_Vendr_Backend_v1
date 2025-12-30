@@ -33,7 +33,8 @@ exports.getOrderHistory = catchAsyncErrors(async (req, res, next) => {
         .sort({ createdAt: -1 }) // Sort by newest first
         .skip(skip)
         .limit(limit)
-        .populate('cart.product', 'name images price');
+        .populate('cart.product', 'name images price')
+        .populate('deliveryMan', 'name phone');
 
     // Get total count for pagination
     const totalOrders = await Order.countDocuments(query);
