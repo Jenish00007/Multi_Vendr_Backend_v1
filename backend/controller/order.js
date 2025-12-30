@@ -360,6 +360,7 @@ router.get(
 
       const order = await Order.findById(req.params.id)
         .populate('deliveryMan')
+        .populate('shop')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -509,7 +510,7 @@ router.get(
       const order = await Order.findById(orderId)
         .populate({
           path: 'deliveryMan',
-          select: 'currentLocation name'
+          select: 'currentLocation name phoneNumber'
         });
 
       if (!order) {
@@ -546,7 +547,8 @@ router.get(
         location: {
           latitude: latitude,
           longitude: longitude,
-          deliveryManName: deliveryMan.name
+          deliveryManName: deliveryMan.name,
+          deliveryManPhone: deliveryMan.phoneNumber
         },
         lastUpdated: deliveryMan.updatedAt
       });
