@@ -48,7 +48,4 @@ router.delete("/delete/:id", isAuthenticated,  deleteDeliveryMan);
 // Verify token route
 router.get('/verify-token', verifyToken);
 
-// User app routes (for live tracking)
-router.get('/location/:orderId', getLocationByOrder);
-
 module.exports = router; 
