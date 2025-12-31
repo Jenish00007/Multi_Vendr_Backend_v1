@@ -32,8 +32,6 @@ const getUser = (receiverId) => {
   return users.find((user) => user.userId === receiverId);
 };
 
-const Order = require("../backend/model/order"); // <-- ADDED THIS LINE
-
 // Define a message object with a seen property
 const createMessage = ({ senderId, receiverId, text, images }) => ({
   senderId,
@@ -52,42 +50,6 @@ io.on("connection", (socket) => {
     addUser(userId, socket.id);
     io.emit("getUsers", users);
   });
-
-  // Handle delivery man location updates <-- ADDED THIS BLOCK
-  socket.on(
-    "deliveryManLocationUpdate",
-    async ({ orderId, latitude, longitude }) => {
-      try {
-        // Find the order to get the user ID
-        const order = await Order.findById(orderId);
-
-        if (order && order.user && order.user._id) {
-          const userId = order.user._id.toString();
-          const userSocket = getUser(userId);
-
-          if (userSocket) {
-            io.to(userSocket.socketId).emit("orderLocationUpdate", {
-              orderId,
-              latitude,
-              longitude,
-              timestamp: new Date(),
-            });
-            console.log(
-              `Emitting location update for order ${orderId} to user ${userId}: (${latitude}, ${longitude})`
-            );
-          } else {
-            console.log(
-              `User ${userId} for order ${orderId} not found in connected users.`
-            );
-          }
-        } else {
-          console.log(`Order ${orderId} or associated user not found.`);
-        }
-      } catch (error) {
-        console.error(`Error processing location update: ${error.message}`);
-      }
-    }
-  ); // <-- END ADDED BLOCK
 
   // send and get message
   const messages = {}; // Object to track messages sent to each user

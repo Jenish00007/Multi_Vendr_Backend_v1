@@ -426,12 +426,12 @@ exports.acceptOrder = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Check if order is already assigned
-        if (order.deliveryMan) {
+        if (order.delivery_man) {
             return next(new ErrorHandler("Order is already assigned to another delivery man", 400));
         }
 
         // Update order with delivery man
-        order.deliveryMan = deliveryManId;
+        order.delivery_man = deliveryManId;
         order.status = "Out for delivery";
         await order.save();
 
@@ -456,7 +456,7 @@ exports.ignoreOrder = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Check if order is already assigned to this delivery man
-        if (order.deliveryMan && order.deliveryMan.toString() === deliveryManId) {
+        if (order.delivery_man && order.delivery_man.toString() === deliveryManId) {
             return next(new ErrorHandler("Cannot ignore an order that is already assigned to you", 400));
         }
 
@@ -651,7 +651,7 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
         
         const Order = require("../model/order");
         const order = await Order.findById(orderId)
-            .populate('deliveryMan', 'currentLocation name phone');
+            .populate('deliveryMan', 'currentLocation name');
 
         if (!order) {
             return next(new ErrorHandler('Order not found', 404));
@@ -682,8 +682,7 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
             location: {
                 latitude: latitude,
                 longitude: longitude,
-                deliveryManName: deliveryMan.name,
-                deliveryManPhone: deliveryMan.phoneNumber
+                deliveryManName: deliveryMan.name
             },
             lastUpdated: deliveryMan.updatedAt
         });
