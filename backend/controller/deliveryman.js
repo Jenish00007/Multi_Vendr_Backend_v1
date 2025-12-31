@@ -4,47 +4,9 @@ const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const Order = require("../model/order");
 const jwt = require("jsonwebtoken");
-const calculateDistance = require("../config/distance");
-
-// Helper function to calculate distance between deliveryman and order user
-const getDistanceFromDeliveryManToUser = async (deliveryManId, userLocation) => {
-    try {
-        // Get deliveryman's current location
-        const deliveryMan = await DeliveryMan.findById(deliveryManId);
-        
-        if (!deliveryMan || !deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
-            return null; // No location data available
-        }
-        
-        // Check if user location is available
-        if (!userLocation || !userLocation.latitude || !userLocation.longitude) {
-            return null; // No user location data available
-        }
-        
-        // Extract coordinates
-        const [deliveryManLon, deliveryManLat] = deliveryMan.currentLocation.coordinates;
-        const userLat = userLocation.latitude;
-        const userLon = userLocation.longitude;
-        
-        // Calculate distance using the existing function
-        const distanceResult = calculateDistance(deliveryManLat, deliveryManLon, userLat, userLon);
-        
-        return {
-            distanceKm: parseFloat((distanceResult.distanceMeters / 1000).toFixed(2)),
-            distanceMeters: distanceResult.distanceMeters,
-            duration: distanceResult.localizedValues.duration.text
-        };
-    } catch (error) {
-        console.error('Error calculating distance:', error);
-        return null;
-    }
-};
-
-// Export the distance calculation function for use in other controllers
-exports.calculateDistanceToUser = getDistanceFromDeliveryManToUser;
 
 // Register delivery man
-exports.registerDeliveryMan = catchAsyncErrors(async (req, res, next) => {
+exports.registerDeliveryMan = async (req, res) => {
     try {
         console.log("Starting delivery man registration...");
         const { 
@@ -90,41 +52,22 @@ exports.registerDeliveryMan = catchAsyncErrors(async (req, res, next) => {
         // Get the file URL from the uploaded file
         let idProofUrl = "";
         if (req.file) {
-            // For S3, construct the URL from the key
-            if (req.file.key) {
-                // Construct S3 URL
-                idProofUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${req.file.key}`;
-            } else if (req.file.location) {
-                idProofUrl = req.file.location;
-            } else if (req.file.path) {
-                idProofUrl = req.file.path;
-            }
-            
-            console.log("ID proof uploaded:", {
-                key: req.file.key,
-                location: req.file.location,
-                path: req.file.path,
-                finalUrl: idProofUrl
-            });
+            idProofUrl = req.file.location || req.file.path;
+            console.log("ID proof uploaded:", idProofUrl);
             
             if (!idProofUrl) {
-                console.error("Failed to get ID proof URL from file object:", req.file);
                 return res.status(400).json({
                     success: false,
-                    message: "Failed to upload ID proof - URL not generated"
+                    message: "Failed to upload ID proof"
                 });
             }
         } else {
-            console.log("No ID proof file provided. Request body:", req.body);
-            console.log("Request files:", req.files);
+            console.log("No ID proof file provided");
             return res.status(400).json({
                 success: false,
                 message: "ID proof is required"
             });
         }
-
-        // Check if admin is registering (auto-approve)
-        const isAdminRegister = req.user && req.user.role === "Admin";
 
         // Create new delivery man
         const deliveryMan = await DeliveryMan.create({
@@ -137,7 +80,7 @@ exports.registerDeliveryMan = catchAsyncErrors(async (req, res, next) => {
             vehicleNumber,
             licenseNumber,
             idProof: idProofUrl,
-            isApproved: isAdminRegister // Auto-approve if admin is registering
+            isApproved: false // Default to false, needs admin approval
         });
 
         console.log("Delivery man created successfully:", deliveryMan._id);
@@ -147,17 +90,18 @@ exports.registerDeliveryMan = catchAsyncErrors(async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            message: isAdminRegister 
-                ? "Delivery man registered and approved successfully!" 
-                : "Registration successful! Waiting for admin approval.",
+            message: "Registration successful! Waiting for admin approval.",
             deliveryMan
         });
 
     } catch (error) {
         console.error("Error in registerDeliveryMan:", error);
-        return next(new ErrorHandler(error.message || "Internal server error", 500));
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Internal server error"
+        });
     }
-});
+};
 
 // Login delivery man
 exports.loginDeliveryMan = async (req, res) => {
@@ -206,7 +150,8 @@ exports.loginDeliveryMan = async (req, res) => {
         // Generate token
         const token = jwt.sign(
             { id: deliveryMan._id },
-            process.env.JWT_SECRET_KEY
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: '7d' }
         );
         console.log("Token generated successfully");
 
@@ -375,18 +320,9 @@ exports.editDeliveryMan = catchAsyncErrors(async (req, res, next) => {
 
         // Update ID proof if new file is uploaded
         if (req.file) {
-            let idProofUrl = "";
-            // For S3, construct the URL from the key
-            if (req.file.key) {
-                idProofUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${req.file.key}`;
-            } else if (req.file.location) {
-                idProofUrl = req.file.location;
-            } else if (req.file.path) {
-                idProofUrl = req.file.path;
-            }
-            
+            const idProofUrl = req.file.location || req.file.key;
             if (!idProofUrl) {
-                return next(new ErrorHandler("Failed to upload ID proof - URL not generated", 400));
+                return next(new ErrorHandler("Failed to upload ID proof", 400));
             }
             deliveryMan.idProof = idProofUrl;
         }
@@ -431,22 +367,12 @@ exports.getDeliveryManOrders = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler("Delivery man not authenticated", 401));
     }
 
-    // Get orders - exclude orders that have been ignored by this deliveryman
+    // Get orders
     const orders = await Order.find({
-        $and: [
-            {
-                $or: [
-                    { status: 'Processing' },
-                    { status: 'Out for delivery' },
-                    { deliveryMan: req.deliveryMan._id }
-                ]
-            },
-            {
-                $or: [
-                    { ignored_by: { $exists: false } },
-                    { ignored_by: { $nin: [req.deliveryMan._id] } }
-                ]
-            }
+        $or: [
+            { status: 'Processing' },
+            { status: 'Out for delivery' },
+            { deliveryMan: req.deliveryMan._id }
         ]
     })
     .populate('shop', 'name address')
@@ -454,46 +380,32 @@ exports.getDeliveryManOrders = catchAsyncErrors(async (req, res, next) => {
     .populate('deliveryMan', 'name phone')
     .sort({ createdAt: -1 });
 
-    // Format orders for response with distance calculation
-    const formattedOrders = await Promise.all(orders.map(async (order) => {
-        // Calculate distance from deliveryman to order user
-        let distanceInfo = null;
-        if (order.userLocation) {
-            distanceInfo = await getDistanceFromDeliveryManToUser(req.deliveryMan._id, order.userLocation);
-        }
-
-        return {
-            _id: order._id,
-            shop: order.shop ? {
-                _id: order.shop._id,
-                name: order.shop.name,
-                address: order.shop.address
-            } : null,
-            user: order.user ? {
-                _id: order.user._id,
-                name: order.user.name,
-                phone: order.user.phone
-            } : null,
-            deliveryMan: order.deliveryMan ? {
-                _id: order.deliveryMan._id,
-                name: order.deliveryMan.name,
-                phone: order.deliveryMan.phone
-            } : null,
-            cart: order.cart || [],
-            totalPrice: order.totalPrice,
-            status: order.status,
-            distance: distanceInfo ? {
-                km: distanceInfo.distanceKm,
-                meters: distanceInfo.distanceMeters,
-                estimatedTime: distanceInfo.duration
-            } : null,
-            paymentInfo: order.paymentInfo || {},
-            shippingAddress: order.shippingAddress,
-            userLocation: order.userLocation || null,
-            createdAt: order.createdAt,
-            deliveredAt: order.deliveredAt,
-            paidAt: order.paidAt
-        };
+    // Format orders for response
+    const formattedOrders = orders.map(order => ({
+        _id: order._id,
+        shop: order.shop ? {
+            _id: order.shop._id,
+            name: order.shop.name,
+            address: order.shop.address
+        } : null,
+        user: order.user ? {
+            _id: order.user._id,
+            name: order.user.name,
+            phone: order.user.phone
+        } : null,
+        deliveryMan: order.deliveryMan ? {
+            _id: order.deliveryMan._id,
+            name: order.deliveryMan.name,
+            phone: order.deliveryMan.phone
+        } : null,
+        items: order.items || [],
+        totalPrice: order.totalPrice,
+        status: order.status,
+        paymentType: order.paymentType,
+        shippingAddress: order.shippingAddress,
+        userLocation: order.userLocation || null,
+        deliveryInstructions: order.deliveryInstructions,
+        createdAt: order.createdAt
     }));
 
     return res.status(200).json({
@@ -514,12 +426,12 @@ exports.acceptOrder = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Check if order is already assigned
-        if (order.delivery_man) {
+        if (order.deliveryMan) {
             return next(new ErrorHandler("Order is already assigned to another delivery man", 400));
         }
 
         // Update order with delivery man
-        order.delivery_man = deliveryManId;
+        order.deliveryMan = deliveryManId;
         order.status = "Out for delivery";
         await order.save();
 
@@ -544,7 +456,7 @@ exports.ignoreOrder = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Check if order is already assigned to this delivery man
-        if (order.delivery_man && order.delivery_man.toString() === deliveryManId) {
+        if (order.deliveryMan && order.deliveryMan.toString() === deliveryManId) {
             return next(new ErrorHandler("Cannot ignore an order that is already assigned to you", 400));
         }
 
@@ -686,63 +598,96 @@ exports.updateExpoPushToken = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
-// Update current location (Delivery man)
-exports.updateCurrentLocation = catchAsyncErrors(async (req, res, next) => {
-    const { latitude, longitude } = req.body;
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-        return next(new ErrorHandler("latitude and longitude are required", 400));
-    }
-    const updated = await DeliveryMan.findByIdAndUpdate(
-        req.deliveryMan._id,
-        { currentLocation: { type: "Point", coordinates: [longitude, latitude] } },
-        { new: true }
-    );
-    if (!updated) {
-        return next(new ErrorHandler("Delivery man not found", 404));
-    }
-    // broadcast via socket.io to interested clients
+// Update delivery man location
+exports.updateLocation = catchAsyncErrors(async (req, res, next) => {
     try {
-        const { getIO } = require("../socket");
-        const io = getIO();
-        if (io) {
-            const payload = {
-                deliverymanId: String(updated._id),
-                latitude,
-                longitude,
-                timestamp: new Date().toISOString()
-            };
-            // Emit to deliveryman room
-            io.to(`dm:${String(updated._id)}`).emit("location_update", payload);
-            // Emit to all active orders assigned to this deliveryman
-            const activeOrders = await Order.find({
-                $or: [
-                    { deliveryMan: updated._id },
-                    { delivery_man: updated._id }
-                ],
-                status: { $in: ["Out for delivery", "out_for_delivery", "ASSIGNED", "PICKED"] }
-            }).select("_id");
-            activeOrders.forEach(o => {
-                io.to(String(o._id)).emit("location_update", { ...payload, orderId: String(o._id) });
-            });
+        const { latitude, longitude } = req.body;
+        
+        if (!latitude || !longitude) {
+            return next(new ErrorHandler('Latitude and longitude are required', 400));
         }
-    } catch (e) {
-        console.error("Socket broadcast error:", e.message);
+
+        const lat = parseFloat(latitude);
+        const lon = parseFloat(longitude);
+
+        if (isNaN(lat) || isNaN(lon)) {
+            return next(new ErrorHandler('Invalid latitude or longitude', 400));
+        }
+
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            return next(new ErrorHandler('Latitude must be between -90 and 90, longitude between -180 and 180', 400));
+        }
+
+        const deliveryMan = await DeliveryMan.findById(req.deliveryMan._id);
+        if (!deliveryMan) {
+            return next(new ErrorHandler('Delivery man not found', 404));
+        }
+
+        // Update location in GeoJSON format [longitude, latitude]
+        deliveryMan.currentLocation = {
+            type: 'Point',
+            coordinates: [lon, lat]
+        };
+
+        await deliveryMan.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Location updated successfully',
+            location: {
+                latitude: lat,
+                longitude: lon
+            }
+        });
+    } catch (error) {
+        return next(new ErrorHandler(error.message, 500));
     }
-    res.status(200).json({
-        success: true,
-        location: updated.currentLocation
-    });
 });
 
-// Get delivery man location (public)
-exports.getDeliveryManLocation = catchAsyncErrors(async (req, res, next) => {
-    const { id } = req.params;
-    const deliveryMan = await DeliveryMan.findById(id).select('currentLocation');
-    if (!deliveryMan) {
-        return next(new ErrorHandler("Delivery man not found", 404));
+// Get delivery man location by order ID (for user app)
+exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
+    try {
+        const { orderId } = req.params;
+        
+        const Order = require("../model/order");
+        const order = await Order.findById(orderId)
+            .populate('deliveryMan', 'currentLocation name phone');
+
+        if (!order) {
+            return next(new ErrorHandler('Order not found', 404));
+        }
+
+        if (!order.deliveryMan) {
+            return res.status(200).json({
+                success: true,
+                message: 'No delivery man assigned yet',
+                location: null
+            });
+        }
+
+        const deliveryMan = order.deliveryMan;
+        
+        if (!deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
+            return res.status(200).json({
+                success: true,
+                message: 'Delivery man location not available',
+                location: null
+            });
+        }
+
+        const [longitude, latitude] = deliveryMan.currentLocation.coordinates;
+
+        res.status(200).json({
+            success: true,
+            location: {
+                latitude: latitude,
+                longitude: longitude,
+                deliveryManName: deliveryMan.name,
+                deliveryManPhone: deliveryMan.phoneNumber
+            },
+            lastUpdated: deliveryMan.updatedAt
+        });
+    } catch (error) {
+        return next(new ErrorHandler(error.message, 500));
     }
-    res.status(200).json({
-        success: true,
-        location: deliveryMan.currentLocation
-    });
-});
+}); 
