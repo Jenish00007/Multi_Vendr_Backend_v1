@@ -6,91 +6,7 @@ const { isAuthenticated, isSeller, isAdmin, isDeliveryMan } = require("../middle
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
-const DeliveryMan = require("../model/deliveryman");
 const { createOrderNotification } = require("../utils/notificationHelper");
-const { 
-  sendFCMNotificationToDeliverymen: sendFCMToDeliverymen,
-  sendFCMNotificationToSeller: sendFCMToSeller
-} = require("../utils/fcmService");
-
-// Function to send FCM notifications to deliverymen
-const sendFCMNotificationToDeliverymen = async (order) => {
-  try {
-    // Get all available deliverymen with FCM tokens
-    const availableDeliverymen = await DeliveryMan.find({
-      isAvailable: true,
-      isApproved: true,
-      expoPushToken: { $exists: true, $ne: null, $ne: '' }
-    }).select('expoPushToken name _id');
-
-    if (availableDeliverymen.length === 0) {
-      console.log('No available deliverymen with FCM tokens found');
-      return {
-        success: false,
-        error: 'No available deliverymen with FCM tokens found'
-      };
-    }
-
-    // Log deliveryman IDs for debugging
-    console.log('Available deliverymen IDs:', availableDeliverymen.map(dm => ({
-      id: dm._id,
-      name: dm.name,
-      hasToken: !!dm.expoPushToken
-    })));
-
-    // Use the new FCM service
-    const result = await sendFCMToDeliverymen(availableDeliverymen, order);
-    return result;
-
-  } catch (error) {
-    console.error('Error sending FCM notifications to deliverymen:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-// Function to send FCM notifications to seller
-const sendFCMNotificationToSeller = async (order) => {
-  try {
-    // Get the shop with FCM token
-    const shop = await Shop.findById(order.shop).select('name expoPushToken _id');
-
-    if (!shop) {
-      console.log('Shop not found for order:', order._id);
-      return {
-        success: false,
-        error: 'Shop not found'
-      };
-    }
-
-    if (!shop.expoPushToken) {
-      console.log('Shop does not have an FCM token:', shop.name);
-      return {
-        success: false,
-        error: 'Shop does not have an FCM token'
-      };
-    }
-
-    console.log('Sending notification to seller:', {
-      shopId: shop._id,
-      shopName: shop.name,
-      hasToken: !!shop.expoPushToken
-    });
-
-    // Use the new FCM service
-    const result = await sendFCMToSeller(shop, order);
-    return result;
-
-  } catch (error) {
-    console.error('Error sending FCM notification to seller:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
 
 // create new order
 router.post(
@@ -164,35 +80,7 @@ router.post(
           otp, // Save OTP in the order
           shop: shopId, // Add the shopId here
         });
-        console.log('Order created successfully:', { 
-          id: order._id,
-          orderId: order.orderId, // Standardized Order ID
-          status: order.status,
-          totalPrice: order.totalPrice
-        });
         orders.push(order);
-      }
-
-      // Send FCM notifications to deliverymen and sellers for each order
-      for (const order of orders) {
-        try {
-          // Populate the order with shop information before sending notification
-          const populatedOrder = await Order.findById(order._id)
-            .populate({
-              path: 'cart.shopId',
-              select: 'name address phone'
-            })
-            .populate('shop', 'name address phone');
-          
-          // Send notification to deliverymen
-          await sendFCMNotificationToDeliverymen(populatedOrder);
-          
-          // Send notification to seller
-          await sendFCMNotificationToSeller(populatedOrder);
-        } catch (notificationError) {
-          console.error("Error sending FCM notification for order:", order._id, notificationError);
-          // Don't fail the order creation if notification fails
-        }
       }
 
       res.status(201).json({
@@ -258,25 +146,21 @@ router.get(
 );
 
 // get all orders of seller
-router.get("/get-seller-all-orders/:shopId",catchAsyncErrors(async (req, res, next) => {
+router.get(
+  "/get-seller-all-orders/:shopId",
+  catchAsyncErrors(async (req, res, next) => {
     try {
       const orders = await Order.find({
         "cart.shopId": req.params.shopId,
-      })
-      .populate({
-        path: 'cart.product',
-        model: 'Product'
-      })
-      .populate('user._id')
-      .populate('deliveryMan')
-      .sort({createdAt: -1 });
+      }).sort({
+        createdAt: -1,
+      });
 
       res.status(200).json({
         success: true,
         orders,
       });
     } catch (error) {
-      console.log('error in get-seller-all-orders', error)
       return next(new ErrorHandler(error.message, 500));
     }
   })
@@ -285,7 +169,7 @@ router.get("/get-seller-all-orders/:shopId",catchAsyncErrors(async (req, res, ne
 // update order status for seller    ---------------(product)
 router.put(
   "/update-order-status/:id",
-  isSeller,                                                                                         
+  isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
       const order = await Order.findById(req.params.id);
@@ -303,7 +187,7 @@ router.put(
       order.status = req.body.status;
 
       if (req.body.status === "Delivered") {
-        order.deliveredAt = new Date();
+        order.deliveredAt = Date.now();
         order.paymentInfo.status = "Succeeded";
         const serviceCharge = order.totalPrice * 0.1;
         await updateSellerInfo(order.totalPrice - serviceCharge);
@@ -476,6 +360,7 @@ router.get(
 
       const order = await Order.findById(req.params.id)
         .populate('deliveryMan')
+        .populate('shop')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -613,6 +498,66 @@ router.get(
   })
 );
 
+// Get deliveryman location by order ID (for user app)
+router.get(
+  "/deliveryman-location/:orderId",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user._id;
+      
+      const order = await Order.findById(orderId)
+        .populate({
+          path: 'deliveryMan',
+          select: 'currentLocation name phoneNumber'
+        });
+
+      if (!order) {
+        return next(new ErrorHandler('Order not found', 404));
+      }
+
+      // Check if order belongs to the authenticated user
+      if (order.user._id.toString() !== userId.toString()) {
+        return next(new ErrorHandler('You are not authorized to view this order', 403));
+      }
+
+      if (!order.deliveryMan) {
+        return res.status(200).json({
+          success: true,
+          message: 'No delivery man assigned yet',
+          location: null
+        });
+      }
+
+      const deliveryMan = order.deliveryMan;
+      
+      if (!deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
+        return res.status(200).json({
+          success: true,
+          message: 'Delivery man location not available',
+          location: null
+        });
+      }
+
+      const [longitude, latitude] = deliveryMan.currentLocation.coordinates;
+
+      res.status(200).json({
+        success: true,
+        location: {
+          latitude: latitude,
+          longitude: longitude,
+          deliveryManName: deliveryMan.name,
+          deliveryManPhone: deliveryMan.phoneNumber
+        },
+        lastUpdated: deliveryMan.updatedAt
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 // get deliveryman order history
 router.get(
   "/deliveryman/order-history",
@@ -624,7 +569,7 @@ router.get(
 
       const orders = await Order.find({ 
         deliveryMan: deliveryManId,
-        status: { $in: ["Delivered", "Shipping", "Cancelled", "Cancelled by user", "Cancelled by deliveryman"] }
+        status: { $in: ["Delivered", "Shipping"] }
       })
         .sort({ createdAt: -1 })
         .populate('deliveryMan')
@@ -753,6 +698,8 @@ router.put(
        })
        .populate('user', 'name phone');
 
+      console.log("After update - Order deliveryMan:", updatedOrder.deliveryMan);
+
       // Format the response
       const formattedOrder = {
         _id: updatedOrder._id,
@@ -856,18 +803,18 @@ router.put(
   })
 );
 
-// confirm order delivery by deliveryman (without OTP requirement)
+// confirm order delivery by deliveryman with OTP
 router.put(
   "/deliveryman/confirm-delivery/:id",
   isDeliveryMan,
   catchAsyncErrors(async (req, res, next) => {
     try {
-      const orderId = req.params.id;
-      const deliveryManId = req.deliveryMan._id;
+      const { otp } = req.body;
+      console.log("Confirming delivery for order:", req.params.id);
+      console.log("DeliveryMan ID:", req.deliveryMan._id);
+      console.log("OTP provided:", otp);
 
-      console.log(`Delivery confirmation attempt - Order ID: ${orderId}, DeliveryMan ID: ${deliveryManId}`);
-
-      const order = await Order.findById(orderId)
+      const order = await Order.findById(req.params.id)
         .populate('deliveryMan')
         .populate({
           path: 'cart.product',
@@ -880,36 +827,53 @@ router.put(
         .populate('user', 'name phone');
 
       if (!order) {
-        console.log(`Order not found with ID: ${orderId}`);
         return next(new ErrorHandler("Order not found with this id", 404));
       }
 
-      console.log(`Order found - Status: ${order.status}, DeliveryMan: ${order.deliveryMan?._id}`);
+      console.log("Found order:", order ? "Yes" : "No");
+      console.log("Order deliveryMan (after populate):", order.deliveryMan);
+      console.log("Order status:", order.status);
+      console.log("Order OTP:", order.otp);
 
       // Verify this delivery man is assigned to the order
       if (!order.deliveryMan || order.deliveryMan._id.toString() !== req.deliveryMan._id.toString()) {
+        console.error("Delivery man mismatch (during check):");
+        console.error("  orderDeliveryMan._id:", order.deliveryMan?._id);
+        console.error("  requestDeliveryMan._id:", req.deliveryMan._id);
         return next(new ErrorHandler("You are not authorized to deliver this order", 403));
       }
 
-      // Check if order is already delivered
-      if (order.status === "Delivered") {
-        return next(new ErrorHandler("Order has already been delivered and confirmed", 400));
-      }
-
-      // Check if order is in the correct state for delivery confirmation
       if (order.status !== "Out for delivery") {
-        return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}. Order must be 'Out for delivery' to confirm delivery.`, 400));
+        console.error("Invalid order status:", order.status);
+        return next(new ErrorHandler(`Order cannot be confirmed in its current state: ${order.status}`, 400));
       }
 
-      // Update order status to delivered (no OTP verification required)
+      // OTP verification
+      if (!order.otp || order.otp !== otp) {
+        console.error("OTP mismatch:", {
+          providedOTP: otp,
+          storedOTP: order.otp
+        });
+        return next(new ErrorHandler("Invalid OTP", 400));
+      }
+
+      // Ensure deliveryMan field is preserved
       order.status = "Delivered";
-      order.deliveredAt = new Date();
+      order.deliveredAt = Date.now();
       order.deliveryMan = req.deliveryMan._id; // Explicitly set deliveryMan again
+
+      console.log("Saving order with updates:", {
+        status: order.status,
+        deliveredAt: order.deliveredAt,
+        deliveryMan: order.deliveryMan
+      });
 
       await order.save({ validateBeforeSave: false });
 
       // Verify the save
       const savedOrder = await Order.findById(order._id);
+      console.log("After save - Order status:", savedOrder.status);
+      console.log("After save - Order deliveryMan:", savedOrder.deliveryMan);
 
       res.status(200).json({
         success: true,
@@ -918,256 +882,6 @@ router.put(
       });
     } catch (error) {
       console.error("Error in confirm-delivery:", error);
-      return next(new ErrorHandler(error.message, 500));
-    }
-  })
-);
-
-// cancel order by deliveryman
-router.put(
-  "/deliveryman/cancel-order/:id",
-  isDeliveryMan,
-  catchAsyncErrors(async (req, res, next) => {
-    try {
-      const { cancellationReason } = req.body;
-
-      // Validate order ID
-      if (!req.params.id || req.params.id === 'undefined') {
-        return next(new ErrorHandler("Invalid order ID", 400));
-      }
-
-      const order = await Order.findById(req.params.id)
-        .populate({
-          path: 'cart.product',
-          select: 'name images price discountPrice stock sold_out'
-        })
-        .populate({
-          path: 'cart.shopId',
-          select: 'name address phone'
-        })
-        .populate('user', 'name phone');
-
-      if (!order) {
-        return next(new ErrorHandler("Order not found with this id", 404));
-      }
-
-      // Check if the order is assigned to this deliveryman
-      if (!order.deliveryMan || order.deliveryMan.toString() !== req.deliveryMan._id.toString()) {
-        return next(new ErrorHandler("You are not authorized to cancel this order", 403));
-      }
-
-      // Check if order can be cancelled by deliveryman
-      const cancellableStatuses = ["Out for delivery", "Processing"];
-      if (!cancellableStatuses.includes(order.status)) {
-        return next(new ErrorHandler(`Order cannot be cancelled in its current state: ${order.status}. Only orders in "Out for delivery" or "Processing" status can be cancelled by deliveryman.`, 400));
-      }
-
-      // Check if order is already cancelled
-      if (order.status === "Cancelled" || order.status === "Cancelled by deliveryman") {
-        return next(new ErrorHandler("Order is already cancelled", 400));
-      }
-
-      // Store previous status for notification
-      const previousStatus = order.status;
-
-      // Update order status to cancelled by deliveryman
-      order.status = "Cancelled by deliveryman";
-      order.cancelledAt = new Date();
-      order.cancellationReason = cancellationReason || "Cancelled by deliveryman";
-      order.cancelledBy = req.deliveryMan._id;
-      order.deliveryMan = null; // Remove deliveryman assignment
-
-      // Restore product stock if items were already deducted
-      if (previousStatus === "Out for delivery") {
-        for (const item of order.cart) {
-          try {
-            const product = await Product.findById(item.product._id);
-            if (product) {
-              product.stock += item.quantity;
-              product.sold_out = Math.max(0, product.sold_out - item.quantity);
-              await product.save({ validateBeforeSave: false });
-            }
-          } catch (productError) {
-            console.error(`Error updating product ${item.product._id}:`, productError);
-            // Continue with other products even if one fails
-          }
-        }
-      }
-
-      await order.save({ validateBeforeSave: false });
-
-      // Create notification for order cancellation
-      try {
-        await createOrderNotification(
-          order.user,
-          order._id,
-          "Order Cancelled by Deliveryman",
-          `Your order #${order._id.toString().slice(-6).toUpperCase()} has been cancelled by the deliveryman.`,
-          { 
-            previousStatus, 
-            newStatus: "Cancelled by deliveryman",
-            cancellationReason: order.cancellationReason,
-            cancelledBy: "deliveryman"
-          }
-        );
-      } catch (notificationError) {
-        console.error("Error creating cancellation notification:", notificationError);
-        // Don't fail the cancellation if notification fails
-      }
-
-      // Format the response
-      const formattedOrder = {
-        _id: order._id,
-        status: order.status,
-        totalPrice: order.totalPrice,
-        createdAt: order.createdAt,
-        cancelledAt: order.cancelledAt,
-        cancellationReason: order.cancellationReason,
-        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
-        items: order.cart.map((item) => ({
-          _id: item._id,
-          name: item.name || item.product?.name || "Product not found",
-          quantity: item.quantity,
-          price: item.price,
-          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
-          shopName: item.shopId?.name || "Shop not found",
-        })),
-        shippingAddress: order.shippingAddress,
-        paymentInfo: order.paymentInfo,
-        userLocation: order.userLocation || null,
-      };
-
-      res.status(200).json({
-        success: true,
-        message: "Order cancelled successfully by deliveryman",
-        order: formattedOrder,
-      });
-    } catch (error) {
-      console.error("Error in deliveryman cancel-order:", error);
-      return next(new ErrorHandler(error.message, 500));
-    }
-  })
-);
-
-// cancel order by user
-router.put(
-  "/cancel-order/:id",
-  isAuthenticated,
-  catchAsyncErrors(async (req, res, next) => {
-    try {
-      const { cancellationReason } = req.body;
-
-      // Validate order ID
-      if (!req.params.id || req.params.id === 'undefined') {
-        return next(new ErrorHandler("Invalid order ID", 400));
-      }
-
-      const order = await Order.findById(req.params.id)
-        .populate({
-          path: 'cart.product',
-          select: 'name images price discountPrice stock sold_out'
-        })
-        .populate({
-          path: 'cart.shopId',
-          select: 'name address phone'
-        });
-
-      if (!order) {
-        return next(new ErrorHandler("Order not found with this id", 404));
-      }
-
-      // Check if the order belongs to the authenticated user
-      if (order.user._id.toString() !== req.user._id.toString()) {
-        return next(new ErrorHandler("You are not authorized to cancel this order", 403));
-      }
-
-      // Check if order can be cancelled
-      const cancellableStatuses = ["Processing", "Transferred to delivery partner"];
-      if (!cancellableStatuses.includes(order.status)) {
-        return next(new ErrorHandler(`Order cannot be cancelled in its current state: ${order.status}. Only orders in "Processing" or "Transferred to delivery partner" status can be cancelled.`, 400));
-      }
-
-      // Check if order is already cancelled
-      if (order.status === "Cancelled") {
-        return next(new ErrorHandler("Order is already cancelled", 400));
-      }
-
-      // Store previous status for notification
-      const previousStatus = order.status;
-
-      // Update order status to cancelled
-      order.status = "Cancelled";
-      order.cancelledAt = new Date();
-      order.cancellationReason = cancellationReason || "Cancelled by user";
-      order.cancelledBy = req.user._id;
-
-      // Restore product stock if items were already deducted
-      if (previousStatus === "Transferred to delivery partner") {
-        for (const item of order.cart) {
-          try {
-            const product = await Product.findById(item.product._id);
-            if (product) {
-              product.stock += item.quantity;
-              product.sold_out = Math.max(0, product.sold_out - item.quantity);
-              await product.save({ validateBeforeSave: false });
-            }
-          } catch (productError) {
-            console.error(`Error updating product ${item.product._id}:`, productError);
-            // Continue with other products even if one fails
-          }
-        }
-      }
-
-      await order.save({ validateBeforeSave: false });
-
-      // Create notification for order cancellation
-      try {
-        await createOrderNotification(
-          order.user,
-          order._id,
-          "Order Cancelled",
-          `Your order #${order._id.toString().slice(-6).toUpperCase()} has been cancelled successfully.`,
-          { 
-            previousStatus, 
-            newStatus: "Cancelled",
-            cancellationReason: order.cancellationReason,
-            cancelledBy: "user"
-          }
-        );
-      } catch (notificationError) {
-        console.error("Error creating cancellation notification:", notificationError);
-        // Don't fail the cancellation if notification fails
-      }
-
-      // Format the response
-      const formattedOrder = {
-        _id: order._id,
-        status: order.status,
-        totalPrice: order.totalPrice,
-        createdAt: order.createdAt,
-        cancelledAt: order.cancelledAt,
-        cancellationReason: order.cancellationReason,
-        itemsQty: order.cart.reduce((total, item) => total + item.quantity, 0),
-        items: order.cart.map((item) => ({
-          _id: item._id,
-          name: item.name || item.product?.name || "Product not found",
-          quantity: item.quantity,
-          price: item.price,
-          image: item.images?.[0] || item.product?.images?.[0]?.url || "",
-          shopName: item.shopId?.name || "Shop not found",
-        })),
-        shippingAddress: order.shippingAddress,
-        paymentInfo: order.paymentInfo,
-        userLocation: order.userLocation || null,
-      };
-
-      res.status(200).json({
-        success: true,
-        message: "Order cancelled successfully",
-        order: formattedOrder,
-      });
-    } catch (error) {
-      console.error("Error in cancel-order:", error);
       return next(new ErrorHandler(error.message, 500));
     }
   })
