@@ -5,8 +5,6 @@ const sendToken = require("../utils/jwtToken");
 const Order = require("../model/order");
 const User = require("../model/user");
 const jwt = require("jsonwebtoken");
-<<<<<<< HEAD
-=======
 const calculateDistance = require("../config/distance");
 const { sendPushNotification } = require("../utils/pushNotification");
 
@@ -46,7 +44,6 @@ const getDistanceFromDeliveryManToUser = async (deliveryManId, userLocation) => 
 
 // Export the distance calculation function for use in other controllers
 exports.calculateDistanceToUser = getDistanceFromDeliveryManToUser;
->>>>>>> 99bb0f4 (notification check)
 
 // Register delivery man
 exports.registerDeliveryMan = async (req, res) => {
@@ -685,91 +682,6 @@ exports.updateLocation = catchAsyncErrors(async (req, res, next) => {
     } catch (error) {
         return next(new ErrorHandler(error.message, 500));
     }
-<<<<<<< HEAD
-=======
-    const updated = await DeliveryMan.findByIdAndUpdate(
-        req.deliveryMan._id,
-        { currentLocation: { type: "Point", coordinates: [longitude, latitude] } },
-        { new: true }
-    );
-    if (!updated) {
-        return next(new ErrorHandler("Delivery man not found", 404));
-    }
-
-    // Trigger user notifications based on deliveryman proximity (5 min away / arrived)
-    try {
-        const io = req.app.get('io');
-
-        const activeOrders = await Order.find({
-            deliveryMan: req.deliveryMan._id,
-            status: "Out for delivery"
-        });
-
-        for (const order of activeOrders) {
-            if (!order?.userLocation?.latitude || !order?.userLocation?.longitude) {
-                continue;
-            }
-
-            const distanceResult = calculateDistance(
-                latitude,
-                longitude,
-                order.userLocation.latitude,
-                order.userLocation.longitude
-            );
-
-            const durationSeconds = Number(String(distanceResult?.duration || '').replace('s', ''));
-            const distanceMeters = Number(distanceResult?.distanceMeters);
-
-            const userId = order.user?._id;
-            if (!userId) {
-                continue;
-            }
-
-            // 5 minutes to reach
-            if (!order.deliveryNearbyNotified && (durationSeconds <= 300 || distanceMeters <= 4000)) {
-                const user = await User.findById(userId);
-                if (io) {
-                    io.to(String(userId)).emit('deliveryNearby', { orderId: order._id });
-                }
-                if (user?.pushToken) {
-                    await sendPushNotification(
-                        user.pushToken,
-                        'Almost There!',
-                        'Your delivery partner will arrive in about 5 minutes!',
-                        { type: 'deliveryNearby', orderId: String(order._id) }
-                    );
-                }
-                order.deliveryNearbyNotified = true;
-                await order.save({ validateBeforeSave: false });
-            }
-
-            // Reached destination (very close)
-            if (!order.deliveryArrivedNotified && distanceMeters <= 100) {
-                const user = await User.findById(userId);
-                if (io) {
-                    io.to(String(userId)).emit('deliveryArrived', { orderId: order._id });
-                }
-                if (user?.pushToken) {
-                    await sendPushNotification(
-                        user.pushToken,
-                        'Delivery Partner Reached',
-                        'Your delivery partner has reached your destination.',
-                        { type: 'deliveryArrived', orderId: String(order._id) }
-                    );
-                }
-                order.deliveryArrivedNotified = true;
-                await order.save({ validateBeforeSave: false });
-            }
-        }
-    } catch (notifyErr) {
-        console.error('Error in proximity notification handler:', notifyErr);
-    }
-
-    res.status(200).json({
-        success: true,
-        location: updated.currentLocation
-    });
->>>>>>> 99bb0f4 (notification check)
 });
 
 // Get delivery man location by order ID (for user app)
@@ -812,10 +724,12 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
                 longitude: longitude,
                 deliveryManName: deliveryMan.name,
                 deliveryManPhone: deliveryMan.phoneNumber
+                deliveryManName: deliveryMan.name
             },
             lastUpdated: deliveryMan.updatedAt
         });
     } catch (error) {
         return next(new ErrorHandler(error.message, 500));
     }
+}); 
 }); 

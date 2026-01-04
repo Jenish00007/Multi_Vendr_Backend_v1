@@ -23,7 +23,6 @@ const server = app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
 
-<<<<<<< HEAD
 // socket.io setup
 const { setIO } = require("./socket");
 const { Server } = require("socket.io");
@@ -42,11 +41,6 @@ io.on("connection", (socket) => {
     if (deliverymanId) socket.join(`dm:${String(deliverymanId)}`);
   });
 });
-=======
-// Initialize socket.io
-const io = initializeSocket(server);
-app.set('io', io);
->>>>>>> 99bb0f4 (notification check)
 
 // middlewares
 app.use(express.json());
