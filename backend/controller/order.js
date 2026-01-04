@@ -6,97 +6,8 @@ const { isAuthenticated, isSeller, isAdmin, isDeliveryMan } = require("../middle
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
-<<<<<<< HEAD
 const { createOrderNotification } = require("../utils/notificationHelper");
-=======
-const DeliveryMan = require("../model/deliveryman");
-const User = require("../model/user");
-const { createOrderNotification } = require("../utils/notificationHelper");
-const { sendPushNotification } = require("../utils/pushNotification");
-const { 
-  sendFCMNotificationToDeliverymen: sendFCMToDeliverymen,
-  sendFCMNotificationToSeller: sendFCMToSeller
-} = require("../utils/fcmService");
 
-// Function to send FCM notifications to deliverymen
-const sendFCMNotificationToDeliverymen = async (order) => {
-  try {
-    // Get all available deliverymen with FCM tokens
-    const availableDeliverymen = await DeliveryMan.find({
-      isAvailable: true,
-      isApproved: true,
-      expoPushToken: { $exists: true, $ne: null, $ne: '' }
-    }).select('expoPushToken name _id');
-
-    if (availableDeliverymen.length === 0) {
-      console.log('No available deliverymen with FCM tokens found');
-      return {
-        success: false,
-        error: 'No available deliverymen with FCM tokens found'
-      };
-    }
-
-    // Log deliveryman IDs for debugging
-    console.log('Available deliverymen IDs:', availableDeliverymen.map(dm => ({
-      id: dm._id,
-      name: dm.name,
-      hasToken: !!dm.expoPushToken
-    })));
-
-    // Use the new FCM service
-    const result = await sendFCMToDeliverymen(availableDeliverymen, order);
-    return result;
-
-  } catch (error) {
-    console.error('Error sending FCM notifications to deliverymen:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-// Function to send FCM notifications to seller
-const sendFCMNotificationToSeller = async (order) => {
-  try {
-    // Get the shop with FCM token
-    const shop = await Shop.findById(order.shop).select('name expoPushToken _id');
-
-    if (!shop) {
-      console.log('Shop not found for order:', order._id);
-      return {
-        success: false,
-        error: 'Shop not found'
-      };
-    }
-
-    if (!shop.expoPushToken) {
-      console.log('Shop does not have an FCM token:', shop.name);
-      return {
-        success: false,
-        error: 'Shop does not have an FCM token'
-      };
-    }
-
-    console.log('Sending notification to seller:', {
-      shopId: shop._id,
-      shopName: shop.name,
-      hasToken: !!shop.expoPushToken
-    });
-
-    // Use the new FCM service
-    const result = await sendFCMToSeller(shop, order);
-    return result;
-
-  } catch (error) {
-    console.error('Error sending FCM notification to seller:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
->>>>>>> 99bb0f4 (notification check)
 
 // create new order
 router.post(
@@ -810,40 +721,7 @@ router.put(
        })
        .populate('user', 'name phone');
 
-<<<<<<< HEAD
       console.log("After update - Order deliveryMan:", updatedOrder.deliveryMan);
-=======
-      // Push + socket notification: delivery assigned
-      try {
-        const io = req.app.get('io');
-        const user = await User.findById(updatedOrder.user?._id);
-        const deliveryManPayload = updatedOrder.deliveryMan
-          ? {
-              _id: String(updatedOrder.deliveryMan._id || updatedOrder.deliveryMan),
-              name: updatedOrder.deliveryMan.name,
-              phoneNumber: updatedOrder.deliveryMan.phoneNumber
-            }
-          : null;
-
-        if (io && updatedOrder.user?._id) {
-          io.to(String(updatedOrder.user._id)).emit('deliveryAssigned', {
-            orderId: updatedOrder._id,
-            deliveryMan: deliveryManPayload
-          });
-        }
-
-        if (user?.pushToken) {
-          await sendPushNotification(
-            user.pushToken,
-            'Delivery Partner Assigned',
-            `${deliveryManPayload?.name || 'Delivery partner'} is on the way to pick up your order!`,
-            { type: 'deliveryAssigned', orderId: String(updatedOrder._id) }
-          );
-        }
-      } catch (notifyErr) {
-        console.error('Error sending deliveryAssigned push/socket:', notifyErr);
-      }
->>>>>>> 99bb0f4 (notification check)
 
       // Format the response
       const formattedOrder = {
