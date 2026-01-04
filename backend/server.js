@@ -2,6 +2,7 @@ const express = require("express");
 const ErrorHandler = require("./middleware/error");
 const connectDatabase = require("./db/Database");
 const app = express();
+const initializeSocket = require("./socket");
 
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
@@ -22,6 +23,7 @@ const server = app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
 
+<<<<<<< HEAD
 // socket.io setup
 const { setIO } = require("./socket");
 const { Server } = require("socket.io");
@@ -40,6 +42,11 @@ io.on("connection", (socket) => {
     if (deliverymanId) socket.join(`dm:${String(deliverymanId)}`);
   });
 });
+=======
+// Initialize socket.io
+const io = initializeSocket(server);
+app.set('io', io);
+>>>>>>> 99bb0f4 (notification check)
 
 // middlewares
 app.use(express.json());
@@ -123,6 +130,9 @@ app.use("/v2/event", event);
 app.use("/v2/coupon", coupon);
 app.use("/v2/payment", payment);
 app.use("/v2/notification", notification);
+
+// Test endpoint for notifications
+app.use("/v2/test", require("./routes/testRoutes"));
 
 // New endpoints
 app.use("/v2/modules", moduleRoutes);
