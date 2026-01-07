@@ -610,4 +610,58 @@ router.get(
   })
 );
 
+// Save products to shop (Duplicate existing products to seller's shop)
+router.post(
+  "/save-products/in-shop",
+  isSeller,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { productIds } = req.body;
+      const shopId = req.seller._id;
+
+      if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+        return next(new ErrorHandler("Please provide product IDs!", 400));
+      }
+
+      const shop = await Shop.findById(shopId);
+      if (!shop) {
+        return next(new ErrorHandler("Shop not found!", 404));
+      }
+
+      const newProducts = [];
+
+      for (const id of productIds) {
+        const originalProduct = await Product.findById(id);
+        if (originalProduct) {
+          const productData = originalProduct.toObject();
+          delete productData._id;
+          delete productData.createdAt;
+          delete productData.updatedAt;
+          delete productData.__v;
+          
+          productData.shopId = shopId;
+          productData.shop = shop;
+          productData.sold_out = 0;
+          productData.reviews = [];
+          productData.ratings = 0;
+          
+          // Generate a unique name to avoid confusion if needed, or keep same
+          // productData.name = `${productData.name} (Copy)`; 
+          
+          const newProduct = await Product.create(productData);
+          newProducts.push(newProduct);
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        products: newProducts,
+        message: "Products saved successfully to your shop!"
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 module.exports = router;
