@@ -2,6 +2,7 @@ const express = require("express");
 const ErrorHandler = require("./middleware/error");
 const connectDatabase = require("./db/Database");
 const app = express();
+const initializeSocket = require("./socket");
 
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
@@ -123,6 +124,9 @@ app.use("/v2/event", event);
 app.use("/v2/coupon", coupon);
 app.use("/v2/payment", payment);
 app.use("/v2/notification", notification);
+
+// Test endpoint for notifications
+app.use("/v2/test", require("./routes/testRoutes"));
 
 // New endpoints
 app.use("/v2/modules", moduleRoutes);
