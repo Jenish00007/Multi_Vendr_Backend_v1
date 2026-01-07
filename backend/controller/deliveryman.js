@@ -3,7 +3,47 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const Order = require("../model/order");
+const User = require("../model/user");
 const jwt = require("jsonwebtoken");
+const calculateDistance = require("../config/distance");
+const { sendPushNotification } = require("../utils/pushNotification");
+
+// Helper function to calculate distance between deliveryman and order user
+const getDistanceFromDeliveryManToUser = async (deliveryManId, userLocation) => {
+    try {
+        // Get deliveryman's current location
+        const deliveryMan = await DeliveryMan.findById(deliveryManId);
+        
+        if (!deliveryMan || !deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
+            return null; // No location data available
+        }
+        
+        // Check if user location is available
+        if (!userLocation || !userLocation.latitude || !userLocation.longitude) {
+            return null; // No user location data available
+        }
+        
+        // Extract coordinates
+        const [deliveryManLon, deliveryManLat] = deliveryMan.currentLocation.coordinates;
+        const userLat = userLocation.latitude;
+        const userLon = userLocation.longitude;
+        
+        // Calculate distance using the existing function
+        const distanceResult = calculateDistance(deliveryManLat, deliveryManLon, userLat, userLon);
+        
+        return {
+            distanceKm: parseFloat((distanceResult.distanceMeters / 1000).toFixed(2)),
+            distanceMeters: distanceResult.distanceMeters,
+            duration: distanceResult.localizedValues.duration.text
+        };
+    } catch (error) {
+        console.error('Error calculating distance:', error);
+        return null;
+    }
+};
+
+// Export the distance calculation function for use in other controllers
+exports.calculateDistanceToUser = getDistanceFromDeliveryManToUser;
 
 // Register delivery man
 exports.registerDeliveryMan = async (req, res) => {
@@ -684,10 +724,12 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
                 longitude: longitude,
                 deliveryManName: deliveryMan.name,
                 deliveryManPhone: deliveryMan.phoneNumber
+                deliveryManName: deliveryMan.name
             },
             lastUpdated: deliveryMan.updatedAt
         });
     } catch (error) {
         return next(new ErrorHandler(error.message, 500));
     }
+}); 
 }); 

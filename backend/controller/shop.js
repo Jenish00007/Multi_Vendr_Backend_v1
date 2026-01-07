@@ -37,7 +37,8 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
       location: {
         type: 'Point',
         coordinates: [0, 0] // Default coordinates, can be updated later
-      }
+      },
+      withdrawMethod: req.body.withdrawMethod || null
     };
     
     // Only include withdraw-related fields if app type is multivendor

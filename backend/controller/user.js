@@ -135,6 +135,48 @@ router.put(
   })
 );
 
+// update user FCM token
+router.put(
+  "/fcm-token",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        return next(new ErrorHandler("Push token is required", 400));
+      }
+
+      const user = await User.findById(req.user.id);
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      user.pushToken = token;
+      await user.save();
+
+      console.log(`FCM token updated for user ${user.email}: ${token}`);
+
+      res.status(200).json({
+        success: true,
+        message: "FCM token updated successfully",
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          avatar: user.avatar,
+          pushToken: user.pushToken
+        }
+      });
+    } catch (error) {
+      console.error('Error updating FCM token:', error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 // login user
 router.post(
   "/login-user",
