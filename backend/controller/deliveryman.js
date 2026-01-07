@@ -724,12 +724,10 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
                 longitude: longitude,
                 deliveryManName: deliveryMan.name,
                 deliveryManPhone: deliveryMan.phoneNumber
-                deliveryManName: deliveryMan.name
             },
             lastUpdated: deliveryMan.updatedAt
         });
     } catch (error) {
         return next(new ErrorHandler(error.message, 500));
     }
-}); 
 }); 
