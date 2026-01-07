@@ -276,11 +276,6 @@ exports.getCart = catchAsyncErrors(async (req, res, next) => {
 
         // Get all cart items without populating (since product may be from Product or Event)
         const cartItems = await Cart.find({ user: userId });
-    const cartItems = await Cart.find({ user: userId })
-        .populate({
-            path: 'product',
-            select: 'name price originalPrice discountPrice images description stock shopId shop'
-        });
 
         let subtotal = 0;
         let totalDiscount = 0;
