@@ -5,11 +5,36 @@ const express = require("express");
 const { isSeller, isAuthenticated, isAdmin } = require("../middleware/auth");
 const Withdraw = require("../model/withdraw");
 const sendEmail = require("../config/email.config");
+const Configuration = require("../model/Configuration");
 const router = express.Router();
+
+// Middleware to check if withdraw functionality should be enabled
+const checkWithdrawEnabled = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const configuration = await Configuration.findOne({ isActive: true });
+    
+    if (!configuration) {
+      return next(new ErrorHandler("Configuration not found", 404));
+    }
+    
+    // If app type is single vendor, disable withdraw functionality
+    if (configuration.appType === 'singlevendor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Withdraw functionality is not available for single vendor apps'
+      });
+    }
+    
+    next();
+  } catch (error) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+});
 
 // create withdraw request --- only for seller
 router.post(
   "/create-withdraw-request",
+  checkWithdrawEnabled,
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
@@ -60,6 +85,7 @@ router.post(
 // get all withdraws --- admin
 router.get(
   "/get-all-withdraw-request",
+  checkWithdrawEnabled,
   isAuthenticated,
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {
@@ -79,6 +105,7 @@ router.get(
 // get seller withdraws --- seller
 router.get(
   "/get-all-withdraw-request-seller",
+  checkWithdrawEnabled,
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
@@ -97,6 +124,7 @@ router.get(
 // update withdraw request ---- admin
 router.put(
   "/update-withdraw-request/:id",
+  checkWithdrawEnabled,
   isAuthenticated,
   isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {

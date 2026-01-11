@@ -77,6 +77,14 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  deliveryNearbyNotified: {
+    type: Boolean,
+    default: false,
+  },
+  deliveryArrivedNotified: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Add indexes for better query performance

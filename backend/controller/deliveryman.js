@@ -3,7 +3,47 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const Order = require("../model/order");
+const User = require("../model/user");
 const jwt = require("jsonwebtoken");
+const calculateDistance = require("../config/distance");
+const { sendPushNotification } = require("../utils/pushNotification");
+
+// Helper function to calculate distance between deliveryman and order user
+const getDistanceFromDeliveryManToUser = async (deliveryManId, userLocation) => {
+    try {
+        // Get deliveryman's current location
+        const deliveryMan = await DeliveryMan.findById(deliveryManId);
+        
+        if (!deliveryMan || !deliveryMan.currentLocation || !deliveryMan.currentLocation.coordinates) {
+            return null; // No location data available
+        }
+        
+        // Check if user location is available
+        if (!userLocation || !userLocation.latitude || !userLocation.longitude) {
+            return null; // No user location data available
+        }
+        
+        // Extract coordinates
+        const [deliveryManLon, deliveryManLat] = deliveryMan.currentLocation.coordinates;
+        const userLat = userLocation.latitude;
+        const userLon = userLocation.longitude;
+        
+        // Calculate distance using the existing function
+        const distanceResult = calculateDistance(deliveryManLat, deliveryManLon, userLat, userLon);
+        
+        return {
+            distanceKm: parseFloat((distanceResult.distanceMeters / 1000).toFixed(2)),
+            distanceMeters: distanceResult.distanceMeters,
+            duration: distanceResult.localizedValues.duration.text
+        };
+    } catch (error) {
+        console.error('Error calculating distance:', error);
+        return null;
+    }
+};
+
+// Export the distance calculation function for use in other controllers
+exports.calculateDistanceToUser = getDistanceFromDeliveryManToUser;
 
 // Register delivery man
 exports.registerDeliveryMan = async (req, res) => {
@@ -426,12 +466,12 @@ exports.acceptOrder = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Check if order is already assigned
-        if (order.delivery_man) {
+        if (order.deliveryMan) {
             return next(new ErrorHandler("Order is already assigned to another delivery man", 400));
         }
 
         // Update order with delivery man
-        order.delivery_man = deliveryManId;
+        order.deliveryMan = deliveryManId;
         order.status = "Out for delivery";
         await order.save();
 
@@ -456,7 +496,7 @@ exports.ignoreOrder = catchAsyncErrors(async (req, res, next) => {
         }
 
         // Check if order is already assigned to this delivery man
-        if (order.delivery_man && order.delivery_man.toString() === deliveryManId) {
+        if (order.deliveryMan && order.deliveryMan.toString() === deliveryManId) {
             return next(new ErrorHandler("Cannot ignore an order that is already assigned to you", 400));
         }
 
@@ -651,7 +691,7 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
         
         const Order = require("../model/order");
         const order = await Order.findById(orderId)
-            .populate('deliveryMan', 'currentLocation name');
+            .populate('deliveryMan', 'currentLocation name phone');
 
         if (!order) {
             return next(new ErrorHandler('Order not found', 404));
@@ -682,7 +722,8 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
             location: {
                 latitude: latitude,
                 longitude: longitude,
-                deliveryManName: deliveryMan.name
+                deliveryManName: deliveryMan.name,
+                deliveryManPhone: deliveryMan.phoneNumber
             },
             lastUpdated: deliveryMan.updatedAt
         });

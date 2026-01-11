@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { generateShopId } = require("../utils/idGenerator");
 
 const shopSchema = new mongoose.Schema({
   name: {
@@ -115,7 +116,7 @@ const shopSchema = new mongoose.Schema({
       },
       createdAt: {
         type: Date,
-        default: Date.now(),
+        default: Date.now,
       },
       updatedAt: {
         type: Date,
@@ -124,7 +125,13 @@ const shopSchema = new mongoose.Schema({
   ],
   createdAt: {
     type: Date,
-    default: Date.now(),
+    default: Date.now,
+  },
+  shopId: {
+    type: String,
+    unique: true,
+    sparse: true, // Allow null values but ensure uniqueness when present
+    index: true
   },
   resetPasswordToken: String,
   resetPasswordTime: Date,
@@ -132,6 +139,57 @@ const shopSchema = new mongoose.Schema({
 
 // Create index for geospatial queries
 shopSchema.index({ location: "2dsphere" });
+
+// Generate standardized Shop ID before saving
+shopSchema.pre("save", async function (next) {
+  // Only generate shopId if it doesn't exist
+  if (!this.shopId) {
+    try {
+      const Shop = this.constructor;
+      let attempts = 0;
+      const maxAttempts = 5;
+      let generated = false;
+      
+      // Retry logic to handle potential race conditions
+      while (!generated && attempts < maxAttempts) {
+        try {
+          // Generate new shopId
+          const newShopId = await generateShopId(Shop);
+          
+          // Check if this shopId already exists (race condition check)
+          const existingShop = await Shop.findOne({ shopId: newShopId });
+          if (!existingShop) {
+            // ID is unique, assign it
+            this.shopId = newShopId;
+            generated = true;
+          } else {
+            // ID already exists, try again
+            attempts++;
+            if (attempts < maxAttempts) {
+              // Wait a tiny bit before retrying to avoid immediate collision
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+          }
+        } catch (genError) {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            throw genError;
+          }
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+      
+      if (!generated) {
+        console.error("Failed to generate unique Shop ID after multiple attempts");
+        // Continue without shopId - it can be generated later
+      }
+    } catch (error) {
+      console.error("Error generating Shop ID:", error);
+      // Continue without shopId if generation fails - it can be generated later
+    }
+  }
+  next();
+});
 
 // Hash password
 shopSchema.pre("save", async function (next) {
@@ -143,9 +201,7 @@ shopSchema.pre("save", async function (next) {
 
 // jwt token
 shopSchema.methods.getJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY, {
-    expiresIn: process.env.JWT_EXPIRES,
-  });
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY);
 };
 
 // comapre password

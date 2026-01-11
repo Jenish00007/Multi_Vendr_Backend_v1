@@ -22,6 +22,10 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
       return next(new ErrorHandler("User already exists", 400));
     }
 
+    // Check app type to conditionally include withdraw-related fields
+    const Configuration = require("../model/Configuration");
+    const configuration = await Configuration.findOne({ isActive: true });
+    
     const seller = {
       name: req.body.name,
       email: email,
@@ -36,9 +40,20 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
       },
       withdrawMethod: req.body.withdrawMethod || null
     };
+    
+    // Only include withdraw-related fields if app type is multivendor
+    if (configuration && configuration.appType === 'multivendor') {
+      seller.withdrawMethod = req.body.withdrawMethod || null;
+    }
 
     // Create shop directly without activation
     const newSeller = await Shop.create(seller);
+    console.log('Shop created successfully:', { 
+      id: newSeller._id,
+      shopId: newSeller.shopId,
+      email: newSeller.email, 
+      name: newSeller.name 
+    });
     sendShopToken(newSeller, 201, res);
 
   } catch (error) {
@@ -48,9 +63,7 @@ router.post("/create-shop", upload.single("shopAvatar"), async (req, res, next) 
 
 // create activation token
 const createActivationToken = (seller) => {
-  return jwt.sign(seller, process.env.ACTIVATION_SECRET, {
-    expiresIn: "5m",
-  });
+  return jwt.sign(seller, process.env.ACTIVATION_SECRET);
 };
 
 // activate user
@@ -85,6 +98,12 @@ router.post(
         zipCode,
         address,
         phoneNumber,
+      });
+      console.log('Shop activated successfully:', { 
+        id: seller._id,
+        shopId: seller.shopId, // Standardized Shop ID
+        email: seller.email, 
+        name: seller.name 
       });
 
       sendShopToken(seller, 201, res);
@@ -152,9 +171,22 @@ router.get(
         return next(new ErrorHandler("User doesn't exists", 400));
       }
 
+      // Check app type to conditionally hide withdraw-related fields
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      let sellerData = seller.toObject();
+      
+      // If app type is single vendor, hide withdraw-related fields
+      if (configuration && configuration.appType === 'singlevendor') {
+        delete sellerData.withdrawMethod;
+        delete sellerData.availableBalance;
+        delete sellerData.transections;
+      }
+
       res.status(200).json({
         success: true,
-        seller,
+        seller: sellerData,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -192,9 +224,22 @@ router.get(
         return next(new ErrorHandler("Shop not found with this id", 404));
       }
 
+      // Check app type to conditionally hide withdraw-related fields
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      let shopData = shop.toObject();
+      
+      // If app type is single vendor, hide withdraw-related fields
+      if (configuration && configuration.appType === 'singlevendor') {
+        delete shopData.withdrawMethod;
+        delete shopData.availableBalance;
+        delete shopData.transections;
+      }
+
       res.status(200).json({
         success: true,
-        shop,
+        shop: shopData,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -323,9 +368,27 @@ router.get(
       const sellers = await Shop.find().sort({
         createdAt: -1,
       });
+      
+      // Check app type to conditionally hide withdraw-related fields
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      let sellersData = sellers.map(seller => {
+        let sellerData = seller.toObject();
+        
+        // If app type is single vendor, hide withdraw-related fields
+        if (configuration && configuration.appType === 'singlevendor') {
+          delete sellerData.withdrawMethod;
+          delete sellerData.availableBalance;
+          delete sellerData.transections;
+        }
+        
+        return sellerData;
+      });
+      
       res.status(201).json({
         success: true,
-        sellers,
+        sellers: sellersData,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -366,6 +429,14 @@ router.put(
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
+      // Check app type to conditionally allow withdraw-related operations
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      if (configuration && configuration.appType === 'singlevendor') {
+        return next(new ErrorHandler("Withdraw functionality is not available for single vendor apps", 403));
+      }
+
       const { withdrawMethod } = req.body;
 
       const seller = await Shop.findByIdAndUpdate(req.seller._id, {
@@ -388,6 +459,14 @@ router.delete(
   isSeller,
   catchAsyncErrors(async (req, res, next) => {
     try {
+      // Check app type to conditionally allow withdraw-related operations
+      const Configuration = require("../model/Configuration");
+      const configuration = await Configuration.findOne({ isActive: true });
+      
+      if (configuration && configuration.appType === 'singlevendor') {
+        return next(new ErrorHandler("Withdraw functionality is not available for single vendor apps", 403));
+      }
+
       const seller = await Shop.findById(req.seller._id);
 
       if (!seller) {

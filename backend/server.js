@@ -2,6 +2,7 @@ const express = require("express");
 const ErrorHandler = require("./middleware/error");
 const connectDatabase = require("./db/Database");
 const app = express();
+const initializeSocket = require("./socket");
 
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
@@ -22,6 +23,25 @@ const server = app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
 
+// socket.io setup
+const { setIO } = require("./socket");
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000", "http://localhost:3001"],
+    credentials: true,
+  },
+});
+setIO(io);
+io.on("connection", (socket) => {
+  socket.on("join_order", (orderId) => {
+    if (orderId) socket.join(String(orderId));
+  });
+  socket.on("join_deliveryman", (deliverymanId) => {
+    if (deliverymanId) socket.join(`dm:${String(deliverymanId)}`);
+  });
+});
+
 // middlewares
 app.use(express.json());
 app.use(cookieParser());
@@ -29,7 +49,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
   })
 );
@@ -90,6 +110,7 @@ const configurationRoutes = require("./routes/configurationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const deliverymanRoutes = require("./routes/deliveryman");
 const unitRoutes = require("./routes/unitRoutes");
+const fcmRoutes = require("./routes/fcmRoutes");
 
 // end points
 app.use("/v2/withdraw", withdraw);
@@ -103,6 +124,9 @@ app.use("/v2/event", event);
 app.use("/v2/coupon", coupon);
 app.use("/v2/payment", payment);
 app.use("/v2/notification", notification);
+
+// Test endpoint for notifications
+app.use("/v2/test", require("./routes/testRoutes"));
 
 // New endpoints
 app.use("/v2/modules", moduleRoutes);
@@ -123,8 +147,17 @@ app.use("/v2/settings", configurationRoutes);
 app.use("/v2/admin", adminRoutes);
 app.use("/v2/deliveryman", deliverymanRoutes);
 app.use("/v2/units", unitRoutes);
+app.use("/v2/fcm", fcmRoutes);
 
-// it'for errhendel
+// Debug: Log all registered routes
+console.log("Registered deliveryman routes:");
+deliverymanRoutes.stack.forEach((r) => {
+  if (r.route) {
+    console.log(`  ${Object.keys(r.route.methods).join(', ').toUpperCase()} ${r.route.path}`);
+  }
+});
+
+// it's for error handling
 app.use(ErrorHandler);
 
 // Handling Uncaught Exceptions

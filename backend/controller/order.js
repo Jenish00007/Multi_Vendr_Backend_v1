@@ -8,6 +8,7 @@ const Shop = require("../model/shop");
 const Product = require("../model/product");
 const { createOrderNotification } = require("../utils/notificationHelper");
 
+
 // create new order
 router.post(
   "/create-order",
@@ -195,6 +196,28 @@ router.put(
 
       await order.save({ validateBeforeSave: false });
 
+      // Push + socket notification: vendor confirmed/processing
+      if (previousStatus !== order.status && req.body.status === "Processing") {
+        try {
+          const io = req.app.get('io');
+          const user = await User.findById(order.user?._id);
+          if (io && order.user?._id) {
+            io.to(String(order.user._id)).emit('orderConfirmed', { orderId: order._id });
+          }
+
+          if (user?.pushToken) {
+            await sendPushNotification(
+              user.pushToken,
+              'Order Confirmed',
+              `Your order #${order._id.toString().slice(-6).toUpperCase()} has been confirmed by the vendor!`,
+              { type: 'orderConfirmed', orderId: String(order._id) }
+            );
+          }
+        } catch (notifyErr) {
+          console.error('Error sending orderConfirmed push/socket:', notifyErr);
+        }
+      }
+
       // Create notification for order status change
       try {
         let notificationTitle = "";
@@ -360,6 +383,7 @@ router.get(
 
       const order = await Order.findById(req.params.id)
         .populate('deliveryMan')
+        .populate('shop')
         .populate({
           path: 'cart.product',
           select: 'name images price discountPrice'
@@ -509,7 +533,7 @@ router.get(
       const order = await Order.findById(orderId)
         .populate({
           path: 'deliveryMan',
-          select: 'currentLocation name'
+          select: 'currentLocation name phoneNumber'
         });
 
       if (!order) {
@@ -546,7 +570,8 @@ router.get(
         location: {
           latitude: latitude,
           longitude: longitude,
-          deliveryManName: deliveryMan.name
+          deliveryManName: deliveryMan.name,
+          deliveryManPhone: deliveryMan.phoneNumber
         },
         lastUpdated: deliveryMan.updatedAt
       });
@@ -867,6 +892,25 @@ router.put(
       });
 
       await order.save({ validateBeforeSave: false });
+
+      // Push + socket notification: delivered
+      try {
+        const io = req.app.get('io');
+        const user = await User.findById(order.user?._id);
+        if (io && order.user?._id) {
+          io.to(String(order.user._id)).emit('deliveryArrived', { orderId: order._id });
+        }
+        if (user?.pushToken) {
+          await sendPushNotification(
+            user.pushToken,
+            'Delivery Arrived',
+            'Your order has been delivered! Enjoy your order.',
+            { type: 'deliveryArrived', orderId: String(order._id) }
+          );
+        }
+      } catch (notifyErr) {
+        console.error('Error sending deliveryArrived (delivered) push/socket:', notifyErr);
+      }
 
       // Verify the save
       const savedOrder = await Order.findById(order._id);
