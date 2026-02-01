@@ -19,6 +19,7 @@ const {
     ignoreOrder,
     verifyToken,
     updateExpoPushToken,
+    updateFCMToken,
     updateLocation,
     getLocationByOrder
 } = require("../controller/deliveryman");
@@ -36,6 +37,7 @@ router.post("/orders/:orderId/ignore", isDeliveryMan, ignoreOrder);
 router.put("/update-profile", isDeliveryMan, updateDeliveryManProfile);
 router.put("/update-password", isDeliveryMan, updateDeliveryManPassword);
 router.put("/expo-push-token", isDeliveryMan, updateExpoPushToken);
+router.put("/fcm-token", isDeliveryMan, updateFCMToken);
 router.put("/location", isDeliveryMan, updateLocation);
 
 // Admin routes

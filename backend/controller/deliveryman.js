@@ -731,3 +731,42 @@ exports.getLocationByOrder = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler(error.message, 500));
     }
 }); 
+
+// Update FCM token for deliveryman
+exports.updateFCMToken = catchAsyncErrors(async (req, res, next) => {
+    try {
+        const { fcmToken } = req.body;
+
+        if (!fcmToken) {
+            return next(new ErrorHandler("FCM token is required", 400));
+        }
+
+        // Update deliveryman's FCM token
+        const deliveryMan = await DeliveryMan.findByIdAndUpdate(
+            req.deliveryMan._id,
+            { 
+                $set: { 
+                    fcmToken: fcmToken,
+                    expoPushToken: fcmToken // Keep both for compatibility
+                }
+            },
+            { new: true }
+        );
+
+        if (!deliveryMan) {
+            return next(new ErrorHandler("Deliveryman not found", 404));
+        }
+
+        console.log(`FCM token updated for deliveryman: ${deliveryMan.name}`);
+        
+        res.status(200).json({
+            success: true,
+            message: "FCM token updated successfully",
+            fcmToken: deliveryMan.fcmToken
+        });
+
+    } catch (error) {
+        console.error("Error updating FCM token:", error);
+        return next(new ErrorHandler(error.message, 500));
+    }
+}); 

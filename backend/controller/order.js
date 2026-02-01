@@ -6,7 +6,11 @@ const { isAuthenticated, isSeller, isAdmin, isDeliveryMan } = require("../middle
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 const Product = require("../model/product");
-const { createOrderNotification } = require("../utils/notificationHelper");
+const {
+  createOrderNotification,
+  sendPushNotificationToDeliveryMan,
+  sendNewOrderNotificationToDeliverymen,
+} = require("../utils/notificationHelper");
 
 
 // create new order
@@ -69,7 +73,11 @@ router.post(
         // Generate a 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
+        // Generate order number
+        const orderNumber = 'ORD' + Math.floor(100000 + Math.random() * 900000).toString();
+        
         console.log('Creating order with userLocation:', userLocation);
+        console.log('Generated orderNumber:', orderNumber);
         
         const order = await Order.create({
           cart: items,
@@ -79,9 +87,20 @@ router.post(
           paymentInfo,
           userLocation, // Save user location in the order
           otp, // Save OTP in the order
+          orderNumber, // Save order number
           shop: shopId, // Add the shopId here
         });
         orders.push(order);
+        
+        // Send notification to deliverymen about the new order
+        try {
+          console.log(`Sending notification to deliverymen for order: ${order._id}`);
+          const notificationResult = await sendNewOrderNotificationToDeliverymen(order);
+          console.log('Notification result:', notificationResult);
+        } catch (notificationError) {
+          console.error('Error sending notification to deliverymen:', notificationError);
+          // Don't fail the order creation if notification fails
+        }
       }
 
       res.status(201).json({
@@ -757,6 +776,30 @@ router.put(
         }
       };
 
+      // Send notification to user that order has been accepted
+      try {
+        if (!updatedOrder.user || !updatedOrder.user._id) {
+          console.error("Order user information is missing, cannot send acceptance notification");
+        } else {
+          await createOrderNotification(
+            updatedOrder.user._id,
+            updatedOrder._id,
+            "Order Accepted for Delivery",
+            `Your order #${updatedOrder.orderNumber} has been accepted by ${updatedOrder.deliveryMan.name} and is out for delivery.`,
+            {
+              type: "order_accepted",
+              deliveryManName: updatedOrder.deliveryMan.name,
+              deliveryManPhone: updatedOrder.deliveryMan.phoneNumber,
+              orderStatus: updatedOrder.status
+            }
+          );
+          console.log("Notification sent to user for order acceptance");
+        }
+      } catch (notificationError) {
+        console.error("Error sending notification to user:", notificationError);
+        // Don't fail the order acceptance if notification fails
+      }
+
       console.log("Sending successful response");
       res.status(200).json({
         success: true,
@@ -924,6 +967,203 @@ router.put(
       });
     } catch (error) {
       console.error("Error in confirm-delivery:", error);
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// cancel order by user
+router.put(
+  "/cancel-order/:id",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { cancellationReason } = req.body;
+
+      if (!cancellationReason) {
+        return next(new ErrorHandler("Cancellation reason is required", 400));
+      }
+
+      const order = await Order.findById(id);
+      if (!order) {
+        return next(new ErrorHandler("Order not found", 404));
+      }
+
+      // Check if order belongs to the user
+      if (order.user._id.toString() !== req.user._id.toString()) {
+        return next(new ErrorHandler("You can only cancel your own orders", 403));
+      }
+
+      // Check if order can be cancelled (not already delivered, cancelled, or completed)
+      if (["Delivered", "Completed", "Cancelled"].includes(order.status)) {
+        return next(new ErrorHandler(`Order cannot be cancelled. Current status: ${order.status}`, 400));
+      }
+
+      // Update order status
+      order.status = "Cancelled";
+      order.cancellationReason = cancellationReason;
+      order.cancelledAt = new Date();
+
+      await order.save();
+
+      // Send notification to user
+      try {
+        if (!order.user || !order.user._id) {
+          console.error("Order user information is missing, cannot send notification");
+        } else {
+          const orderDisplayNumber = order.orderNumber || `#${order._id.toString().slice(-8)}`;
+          await createOrderNotification(
+            order.user._id,
+            order._id,
+            "Order Cancelled",
+            `Your order ${orderDisplayNumber} has been cancelled.`,
+            {
+              type: "order_cancelled",
+              orderStatus: "Cancelled",
+              cancellationReason: cancellationReason,
+              cancelledBy: "user"
+            }
+          );
+        }
+      } catch (notifyErr) {
+        console.error("Error sending cancellation notification to user:", notifyErr);
+      }
+
+      // Send notification to deliveryman if assigned
+      if (order.deliveryMan) {
+        try {
+          const orderDisplayNumber = order.orderNumber || `#${order._id.toString().slice(-8)}`;
+          await sendPushNotificationToDeliveryMan(
+            order.deliveryMan._id,
+            "Order Cancelled by User",
+            `Order ${orderDisplayNumber} has been cancelled by the customer. Reason: ${cancellationReason || 'No reason provided'}`,
+            {
+              type: "order_cancelled_by_user",
+              orderStatus: "Cancelled",
+              orderId: order._id.toString()
+            }
+          );
+          console.log("Notification sent to deliveryman for order cancellation by user");
+        } catch (notifyDeliveryManErr) {
+          console.error("Error sending cancellation notification to deliveryman:", notifyDeliveryManErr);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Order cancelled successfully",
+        order,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// cancel order by deliveryman
+router.put(
+  "/deliveryman/cancel-order/:id",
+  isDeliveryMan,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { cancellationReason } = req.body;
+
+      if (!cancellationReason) {
+        return next(new ErrorHandler("Cancellation reason is required", 400));
+      }
+
+      const order = await Order.findById(id)
+        .populate('user', 'name email phoneNumber');
+      if (!order) {
+        return next(new ErrorHandler("Order not found", 404));
+      }
+
+      console.log("Order found:", order._id);
+      console.log("Order deliveryMan:", order.deliveryMan);
+      console.log("Order user:", order.user);
+      
+      try {
+        console.log("Req deliveryMan:", req.deliveryMan._id);
+      } catch (err) {
+        console.error("Error accessing req.deliveryMan._id:", err);
+        console.log("Req deliveryMan object:", req.deliveryMan);
+      }
+
+      console.log("About to check deliveryman assignment...");
+      // Check if order is assigned to this deliveryman
+      if (!order.deliveryMan || order.deliveryMan.toString() !== req.deliveryMan._id.toString()) {
+        console.log("Deliveryman assignment check failed");
+        return next(new ErrorHandler("You can only cancel orders assigned to you", 403));
+      }
+      console.log("Deliveryman assignment check passed");
+
+      // Check if order can be cancelled
+      console.log("Checking order status:", order.status);
+      if (["Delivered", "Completed", "Cancelled"].includes(order.status)) {
+        console.log("Order cannot be cancelled - status:", order.status);
+        return next(new ErrorHandler(`Order cannot be cancelled. Current status: ${order.status}`, 400));
+      }
+
+      console.log("Updating order status...");
+      // Update order status
+      order.status = "Cancelled";
+      order.cancellationReason = cancellationReason;
+      order.cancelledAt = new Date();
+      order.cancelledBy = "deliveryman";
+
+      console.log("Saving order...");
+      await order.save();
+      console.log("Order saved successfully");
+
+      // Send notification to user
+      try {
+        console.log("Attempting to send user notification...");
+        if (!order.user) {
+          console.error("Order user information is missing, cannot send notification");
+        } else {
+          console.log("Creating notification for user:", order.user._id);
+          const orderDisplayNumber = order.orderNumber || `#${order._id.toString().slice(-8)}`;
+          await createOrderNotification(
+            order.user._id,
+            order._id,
+            "Order Cancelled by Delivery Partner",
+            `Your order ${orderDisplayNumber} has been cancelled by the delivery partner.`,
+            {
+              type: "order_cancelled",
+              orderStatus: "Cancelled",
+              cancellationReason: cancellationReason,
+              cancelledBy: "deliveryman"
+            }
+          );
+          console.log("User notification sent successfully");
+        }
+      } catch (notifyErr) {
+        console.error("Error sending cancellation notification to user:", notifyErr);
+      }
+
+      // Send notification to other available deliverymen that this order is cancelled
+      try {
+        console.log("Attempting to send notification to other deliverymen...");
+        const orderDisplayNumber = order.orderNumber || `#${order._id.toString().slice(-8)}`;
+        await sendNewOrderNotificationToDeliverymen({
+          ...order,
+          status: "Cancelled",
+          title: "Order Cancelled",
+          body: `Order ${orderDisplayNumber} has been cancelled and is no longer available.`
+        });
+        console.log("Notification sent to other deliverymen about order cancellation");
+      } catch (notifyOtherDeliveryMenErr) {
+        console.error("Error sending cancellation notification to other deliverymen:", notifyOtherDeliveryMenErr);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Order cancelled successfully",
+        order,
+      });
+    } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   })
