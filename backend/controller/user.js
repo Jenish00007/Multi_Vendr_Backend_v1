@@ -373,24 +373,49 @@ router.put(
     try {
       const user = await User.findById(req.user.id);
 
-      const sameTypeAddress = user.addresses.find(
-        (address) => address.addressType === req.body.addressType
-      );
-      if (sameTypeAddress) {
-        return next(
-          new ErrorHandler(`${req.body.addressType} address already exists`)
-        );
-      }
+      console.log('Update request body:', {
+        _id: req.body._id,
+        addressType: req.body.addressType,
+        hasCoordinates: !!(req.body.latitude && req.body.longitude)
+      });
 
+      // Check if we're updating an existing address
       const existsAddress = user.addresses.find(
-        (address) => address._id === req.body._id
+        (address) => address._id.toString() === req.body._id
       );
+
+      console.log('Address lookup result:', {
+        lookingForId: req.body._id,
+        foundAddress: !!existsAddress,
+        totalAddresses: user.addresses.length,
+        addressIds: user.addresses.map(addr => ({ id: addr._id.toString(), type: addr.addressType }))
+      });
 
       if (existsAddress) {
+        // Updating existing address - no need to check for duplicate types
         Object.assign(existsAddress, req.body);
+        existsAddress.updatedAt = new Date();
+        console.log('Updated existing address successfully');
       } else {
+        // Adding new address - check for duplicate type
+        const sameTypeAddress = user.addresses.find(
+          (address) => address.addressType === req.body.addressType
+        );
+        if (sameTypeAddress) {
+          console.log('Duplicate address type found:', req.body.addressType);
+          return next(
+            new ErrorHandler(`${req.body.addressType} address already exists`)
+          );
+        }
+        
         // add the new address to the array
-        user.addresses.push(req.body);
+        const newAddress = {
+          ...req.body,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        user.addresses.push(newAddress);
+        console.log('Added new address successfully');
       }
 
       await user.save();
@@ -400,6 +425,7 @@ router.put(
         user,
       });
     } catch (error) {
+      console.error('Error in update-user-addresses:', error);
       return next(new ErrorHandler(error.message, 500));
     }
   })

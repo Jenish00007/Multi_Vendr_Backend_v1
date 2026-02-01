@@ -53,6 +53,38 @@ const userSchema = new mongoose.Schema({
       addressType: {
         type: String,
       },
+      latitude: {
+        type: Number,
+        default: null
+      },
+      longitude: {
+        type: Number,
+        default: null
+      },
+      state: {
+        type: String,
+        default: ''
+      },
+      contactPersonName: {
+        type: String,
+        default: ''
+      },
+      contactPersonNumber: {
+        type: String,
+        default: ''
+      },
+      isDefault: {
+        type: Boolean,
+        default: false
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now
+      }
     },
   ],
   role: {

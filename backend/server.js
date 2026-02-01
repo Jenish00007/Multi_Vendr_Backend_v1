@@ -112,6 +112,7 @@ const deliverymanRoutes = require("./routes/deliveryman");
 const unitRoutes = require("./routes/unitRoutes");
 const fcmRoutes = require("./routes/fcmRoutes");
 const locationProductRoutes = require("./routes/locationProductRoutes");
+const addressRoutes = require("./routes/addressRoutes");
 
 // end points
 app.use("/v2/withdraw", withdraw);
@@ -150,6 +151,7 @@ app.use("/v2/deliveryman", deliverymanRoutes);
 app.use("/v2/units", unitRoutes);
 app.use("/v2/fcm", fcmRoutes);
 app.use("/v2/location-products", locationProductRoutes);
+app.use("/v2/addresses", addressRoutes);
 
 // Debug: Log all registered routes
 console.log("Registered deliveryman routes:");
