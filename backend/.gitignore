@@ -26,3 +26,5 @@ coverage/
 # Temporary files
 tmp/
 temp/ 
+backend/config/firebase-service-account.json
+backend/config/firebase-seller-service-account.json
