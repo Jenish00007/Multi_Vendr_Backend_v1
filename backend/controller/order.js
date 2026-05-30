@@ -26,7 +26,8 @@ router.post(
         _id: req.user._id,
         name: req.user.name,
         email: req.user.email,
-        phoneNumber: req.user.phoneNumber
+        phoneNumber: req.user.phoneNumber,
+        userId: req.user.userId
       };
 
       // Validate userLocation if provided
@@ -137,6 +138,8 @@ router.get(
 
       const formattedOrders = orders.map((order) => ({
         _id: order._id,
+        orderId: order.orderId,
+        orderNumber: order.orderNumber,
         status: order.status,
         totalPrice: order.totalPrice,
         createdAt: order.createdAt,
@@ -152,6 +155,7 @@ router.get(
         shippingAddress: order.shippingAddress,
         paymentInfo: order.paymentInfo,
         userLocation: order.userLocation || null,
+        user: order.user,
       }));
 
       res.status(200).json({

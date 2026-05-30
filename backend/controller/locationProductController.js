@@ -132,17 +132,6 @@ exports.getProductsByLocationSection = catchAsyncErrors(
 
       const shopMongoId = await resolveShopMongoIdByDistrict(resolvedDistrict);
       console.log("shopMongoId", shopMongoId);
-      if (!shopMongoId) {
-        return res.status(200).json({
-          success: true,
-          products: [],
-          total: 0,
-          currentPage: parseInt(page),
-          totalPages: 0,
-          hasMore: false,
-          message: "No shop configured for this district",
-        });
-      }
 
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const limitValue = parseInt(limit);
@@ -150,13 +139,11 @@ exports.getProductsByLocationSection = catchAsyncErrors(
       let products = [];
       let total = 0;
 
+      // Fetch all products to show out-of-range ones as disabled
+      const allProductsQuery = {};
+      
       if (section === "latest") {
-        // Latest products for this shop
-        const query = { shopId: shopMongoId };
-
-        // Use aggregation to handle deduplication before pagination
         const pipeline = [
-          { $match: query },
           { $sort: { createdAt: -1 } },
           {
             $group: {
@@ -177,34 +164,19 @@ exports.getProductsByLocationSection = catchAsyncErrors(
             }
           }
         ];
-
         const result = await Product.aggregate(pipeline);
         products = result[0]?.products || [];
         total = result[0]?.totalCount[0]?.count || 0;
-
-        // Populate category and subcategory
-        products = await Product.populate(products, [
-          { path: "category", select: "name" },
-          { path: "subcategory", select: "name" }
-        ]);
       } else if (section === "recommended") {
-        // Recommended: highest rated in this shop
-        const query = { shopId: shopMongoId };
-
-        products = await Product.find(query)
-          .populate("category", "name")
-          .populate("subcategory", "name")
+        products = await Product.find(allProductsQuery)
           .sort({ ratings: -1, sold_out: -1 })
           .skip(skip)
           .limit(limitValue);
-
-        total = await Product.countDocuments(query);
+        total = await Product.countDocuments(allProductsQuery);
       } else if (section === "offers") {
-        // Top offers: highest discount for this shop
         const pipeline = [
           {
             $match: {
-              shopId: shopMongoId,
               originalPrice: { $exists: true, $ne: null },
               discountPrice: { $exists: true, $ne: null },
             },
@@ -224,9 +196,7 @@ exports.getProductsByLocationSection = catchAsyncErrors(
               },
             },
           },
-          {
-            $sort: { discountPercentage: -1 },
-          },
+          { $sort: { discountPercentage: -1 } },
           {
             $facet: {
               products: [{ $skip: skip }, { $limit: limitValue }],
@@ -234,72 +204,35 @@ exports.getProductsByLocationSection = catchAsyncErrors(
             },
           },
         ];
-
-        const result = await Product.aggregate(pipeline);
-        const rawProducts = result[0]?.products || [];
-        total = result[0]?.totalCount[0]?.count || 0;
-
-        products = await Product.populate(rawProducts, [
-          { path: "category", select: "name" },
-          { path: "subcategory", select: "name" },
-        ]);
-      } else if (section === "all") {
-        // All products for this shop (no specific sorting)
-        const query = { shopId: shopMongoId };
-
-        // Use aggregation to handle deduplication before pagination
-        const pipeline = [
-          { $match: query },
-          { $sort: { createdAt: -1 } },
-          {
-            $group: {
-              _id: {
-                name: "$name",
-                shopId: "$shopId",
-                originalPrice: "$originalPrice",
-                discountPrice: "$discountPrice"
-              },
-              product: { $first: "$$ROOT" }
-            }
-          },
-          { $replaceRoot: { newRoot: "$product" } },
-          {
-            $facet: {
-              products: [{ $skip: skip }, { $limit: limitValue }],
-              totalCount: [{ $count: "count" }]
-            }
-          }
-        ];
-
         const result = await Product.aggregate(pipeline);
         products = result[0]?.products || [];
         total = result[0]?.totalCount[0]?.count || 0;
-
-        // Populate category and subcategory
-        products = await Product.populate(products, [
-          { path: "category", select: "name" },
-          { path: "subcategory", select: "name" }
-        ]);
       } else {
-        // Default: popular items for this shop
-        const query = { shopId: shopMongoId };
-
-        products = await Product.find(query)
-          .populate("category", "name")
-          .populate("subcategory", "name")
-          .sort({ sold_out: -1, ratings: -1 })
+        products = await Product.find(allProductsQuery)
+          .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limitValue);
-
-        total = await Product.countDocuments(query);
+        total = await Product.countDocuments(allProductsQuery);
       }
 
-      // Remove duplicate products (only for sections other than "all" which handles it in aggregation)
-      const uniqueProducts = section === "all" ? products : removeDuplicates(products);
+      // Populate and add isInRange flag
+      products = await Product.populate(products, [
+        { path: "category", select: "name" },
+        { path: "subcategory", select: "name" },
+        { path: "shopId", select: "name address" }
+      ]);
+
+      const formattedProducts = products.map(product => {
+        const productObj = product.toObject ? product.toObject() : product;
+        return {
+          ...productObj,
+          isInRange: shopMongoId ? product.shopId?._id?.toString() === shopMongoId.toString() : true
+        };
+      });
 
       res.status(200).json({
         success: true,
-        products: uniqueProducts,
+        products: formattedProducts,
         total,
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limitValue),

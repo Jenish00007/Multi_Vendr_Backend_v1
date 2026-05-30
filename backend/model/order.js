@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { generateOrderId } = require("../utils/idGenerator");
 
 const orderSchema = new mongoose.Schema({
   cart: {
@@ -18,7 +19,17 @@ const orderSchema = new mongoose.Schema({
     },
     name: String,
     email: String,
-    phoneNumber: String
+    phoneNumber: String,
+    userId: String
+  },
+  orderId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true
+  },
+  orderNumber: {
+    type: String,
   },
   shop: {
     type: mongoose.Schema.Types.ObjectId,
@@ -85,6 +96,39 @@ const orderSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+});
+
+// Generate standardized Order ID before saving
+orderSchema.pre("save", async function (next) {
+  if (!this.orderId) {
+    try {
+      const Order = this.constructor;
+      let attempts = 0;
+      const maxAttempts = 5;
+      let generated = false;
+      
+      while (!generated && attempts < maxAttempts) {
+        try {
+          const newOrderId = await generateOrderId(Order);
+          const existingOrder = await Order.findOne({ orderId: newOrderId });
+          if (!existingOrder) {
+            this.orderId = newOrderId;
+            generated = true;
+          } else {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+        } catch (genError) {
+          attempts++;
+          if (attempts >= maxAttempts) throw genError;
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+    } catch (error) {
+      console.error("Error generating Order ID:", error);
+    }
+  }
+  next();
 });
 
 // Add indexes for better query performance
