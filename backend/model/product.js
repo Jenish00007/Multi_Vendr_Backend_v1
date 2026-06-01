@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
+  productId: {
+    type: String,
+  },
   name: {
     type: String,
     required: [true, "Please enter your product name!"],
@@ -35,7 +38,6 @@ const productSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    enum: ['kg', 'pcs','g','ml','ltr','pack'],
     required: [true, "Please select a unit!"],
   },
   unitCount: {

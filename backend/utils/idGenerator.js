@@ -85,11 +85,22 @@ const generateOrderId = async (OrderModel) => {
   return generateStandardId('ORD', nextSeq);
 };
 
+/**
+ * Generate Product ID (PRD-XXXXXX)
+ * @param {mongoose.Model} ProductModel - Product mongoose model
+ * @returns {Promise<String>} Generated product ID
+ */
+const generateProductId = async (ProductModel) => {
+  const nextSeq = await getNextSequenceNumber(ProductModel, 'productId');
+  return generateStandardId('PRD', nextSeq);
+};
+
 module.exports = {
   generateStandardId,
   getNextSequenceNumber,
   generateUserId,
   generateShopId,
   generateOrderId,
+  generateProductId,
 };
 

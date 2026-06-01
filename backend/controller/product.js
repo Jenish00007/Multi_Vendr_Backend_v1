@@ -11,6 +11,7 @@ const Unit = require("../model/Unit");
 const { upload, handleMulterError } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
 const mongoose = require("mongoose");
+const { generateProductId } = require("../utils/idGenerator");
 
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
@@ -68,6 +69,9 @@ router.post(
       const productData = req.body;
       productData.images = imageUrls;
       productData.shop = shop;
+
+      // Generate product ID
+      productData.productId = await generateProductId(Product);
 
       const product = await Product.create(productData);
 
