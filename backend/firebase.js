@@ -74,15 +74,16 @@ async function sendPushNotification(userId, title, body, data = {}) {
         title,
         body,
       },
-      data: {
-        type: data.type || 'orderUpdate',
-        orderId: data.orderId || '',
-        ...data
-      },
+      data: Object.fromEntries(
+        Object.entries({ type: data.type || 'orderUpdate', orderId: data.orderId || '', ...data })
+          .map(([k, v]) => [k, typeof v === 'object' ? JSON.stringify(v) : String(v)])
+      ),
       android: {
         priority: 'high',
-        sound: 'default',
-        channelId: 'default'
+        notification: {
+          sound: 'default',
+          channelId: 'default'
+        }
       },
       apns: {
         payload: {
@@ -107,7 +108,7 @@ async function sendPushNotification(userId, title, body, data = {}) {
 async function getUserFromDB(userId) {
   // Example with Mongoose (adjust to your setup)
   try {
-    const User = require('./models/User'); // Adjust path
+    const User = require('./model/user');
     const user = await User.findById(userId);
     return user;
   } catch (error) {

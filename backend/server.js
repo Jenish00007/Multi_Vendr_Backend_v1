@@ -33,7 +33,11 @@ const io = new Server(server, {
   },
 });
 setIO(io);
+app.set('io', io);
 io.on("connection", (socket) => {
+  socket.on("joinUserRoom", (userId) => {
+    if (userId) socket.join(String(userId));
+  });
   socket.on("join_order", (orderId) => {
     if (orderId) socket.join(String(orderId));
   });
